@@ -1,0 +1,3033 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Bebek Takip</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bebek Takip">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script src="config.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --success: #16a34a;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+    }
+    body {
+      padding: calc(12px + env(safe-area-inset-top)) 12px calc(32px + env(safe-area-inset-bottom)) 12px;
+    }
+    .login-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 1300;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .login-logo { font-size: 64px; margin-bottom: 8px; }
+    .login-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+    .login-sub { font-size: 15px; color: var(--muted); margin-bottom: 24px; line-height: 1.4; max-width: 320px; }
+    #gsiBtn { min-height: 44px; display: flex; justify-content: center; }
+    .login-error { margin-top: 18px; color: var(--danger); font-weight: 600; font-size: 14px; max-width: 320px; }
+    .account-line button {
+      border: none;
+      background: none;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 0 0 0 8px;
+      cursor: pointer;
+    }
+    .top-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      padding: 11px 8px;
+      border: none;
+      border-radius: 11px;
+      background: transparent;
+      color: #475569;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: #ffffff;
+      color: var(--primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-bar {
+      background: #ecfdf5;
+      border: 1.5px solid #6ee7b7;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .status-item strong { display: block; font-size: 14px; color: #065f46; }
+    .status-sub { display: block; font-size: 12px; color: #047857; margin-top: 2px; font-weight: 600; }
+    .cream-banner {
+      grid-column: 1 / -1;
+      padding-top: 8px;
+      border-top: 1px dashed #6ee7b7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #065f46;
+    }
+    .cream-banner.due {
+      color: #991b1b;
+      font-weight: 700;
+    }
+    .cream-pill {
+      padding: 3px 9px;
+      border-radius: 99px;
+      background: #d1fae5;
+      color: #065f46;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .cream-banner.due .cream-pill {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    label.sec-title {
+      display: block;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    select, input[type="text"], input[type="number"], input[type="time"], textarea {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+    }
+    .datetime-row {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 8px;
+      align-items: center;
+    }
+    /* Tarih: telefon dilinden bağımsız GG/AA/YYYY gösterimi.
+       Görünen metin span'de; gerçek tarih seçici üstte şeffaf duruyor, dokununca açılıyor. */
+    .date-wrap {
+      position: relative;
+      width: 100%;
+      height: 52px;
+      border: 1.5px solid var(--primary);
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .date-wrap.small {
+      height: 44px;
+      font-size: 15px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--text);
+    }
+    .date-wrap .date-native {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      border: none;
+      padding: 0;
+      margin: 0;
+      font-size: 16px;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input[type="date"], button.time-trigger-btn {
+      width: 100%;
+      padding: 12px 10px;
+      font-size: 17px;
+      font-weight: 700;
+      border: 1.5px solid var(--primary);
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      height: 52px;
+      text-align: center;
+      cursor: pointer;
+    }
+    button.time-trigger-btn {
+      font-size: 19px;
+      letter-spacing: 0.5px;
+    }
+    .now-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 11px;
+      border: 1px dashed var(--border);
+      background: #f1f5f9;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    /* GEÇMİŞ KAYITLAR */
+    .hist-controls-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .date-range-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+      scrollbar-width: none;
+    }
+    .date-range-row::-webkit-scrollbar { display: none; }
+    .range-pill {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 99px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .range-pill.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .filter-chip {
+      padding: 9px 4px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .filter-chip.active[data-hfilter="ALL"] { background: #1e293b; color: #fff; border-color: #1e293b; }
+    .filter-chip.active[data-hfilter="Beslenme"] { background: #16a34a; color: #fff; border-color: #16a34a; }
+    .filter-chip.active[data-hfilter="Bez"] { background: #d97706; color: #fff; border-color: #d97706; }
+    .filter-chip.active[data-hfilter="Diğer"] { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+
+    .sort-size-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+    .mini-ctrl-btn, .mini-select {
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #1e293b;
+      font-size: 13px;
+      font-weight: 700;
+      height: 38px;
+      cursor: pointer;
+    }
+    .mini-select { padding: 4px 8px; }
+
+    .hist-item {
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border: 1.5px solid transparent;
+      border-left-width: 6px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .hist-item.type-beslenme {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+      border-left-color: #16a34a;
+    }
+    .hist-item.type-bez {
+      background: #fffbeb;
+      border-color: #fde68a;
+      border-left-color: #d97706;
+    }
+    .hist-item.type-diger {
+      background: #f5f3ff;
+      border-color: #ddd6fe;
+      border-left-color: #7c3aed;
+    }
+    .hist-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+    .type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .type-beslenme .type-badge { background: #dcfce7; color: #166534; }
+    .type-bez .type-badge { background: #fef3c7; color: #92400e; }
+    .type-diger .type-badge { background: #ede9fe; color: #5b21b6; }
+
+    .hist-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 3px;
+    }
+    .hist-detail {
+      font-size: 14px;
+      color: #334155;
+      line-height: 1.35;
+    }
+    .hist-tap-hint {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-align: right;
+    }
+
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: #fff;
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      margin-top: 8px;
+    }
+    .page-btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--primary);
+      background: #eff6ff;
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .page-btn:disabled {
+      border-color: #cbd5e1;
+      background: #f1f5f9;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+    .page-info {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      text-align: center;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--muted); font-weight: 600; flex-shrink: 0; }
+    .detail-val { color: var(--text); font-weight: 700; text-align: right; word-break: break-word; }
+
+    /* DÜZENLEME FORMU STİLLERİ */
+    .edit-field { margin-bottom: 10px; }
+    .edit-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .edit-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .edit-feed-item-row {
+      display: grid;
+      grid-template-columns: 0.72fr 1.1fr 0.65fr auto;
+      gap: 4px;
+      margin-bottom: 6px;
+      align-items: center;
+    }
+    .edit-feed-item-row input, .edit-feed-item-row select {
+      padding: 8px 6px;
+      font-size: 13px;
+      border-radius: 9px;
+    }
+    .mini-del-btn {
+      padding: 8px 8px;
+      border-radius: 9px;
+      border: 1px solid #fca5a5;
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .mini-add-btn {
+      width: 100%;
+      padding: 9px;
+      border-radius: 10px;
+      border: 1.5px dashed var(--primary);
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* MODAL POPUPLAR */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.58);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    .modal-box {
+      width: 100%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.28);
+      margin: auto;
+    }
+    /* Saat seçici her zaman diğer popupların önünde açılsın */
+    #timeModalBackdrop { z-index: 1100; }
+    .modal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .manual-time-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .manual-time-input {
+      width: 84px !important;
+      height: 60px;
+      padding: 4px !important;
+      font-size: 32px !important;
+      font-weight: 800;
+      text-align: center;
+      border: 2px solid var(--primary) !important;
+      border-radius: 14px !important;
+      background: #eff6ff !important;
+      color: #1e3a8a !important;
+    }
+    .manual-colon {
+      font-size: 32px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+    .wheel-container {
+      position: relative;
+      height: 150px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 14px;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      user-select: none;
+    }
+    .wheel-highlight {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 50%;
+      height: 36px;
+      transform: translateY(-50%);
+      background: #dbeafe;
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .wheel-col {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      height: 150px;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      overscroll-behavior-y: contain;
+    }
+    .wheel-col::-webkit-scrollbar { display: none; }
+    .wheel-pad { height: 57px; }
+    .wheel-item {
+      height: 36px;
+      line-height: 36px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+      color: #94a3b8;
+      scroll-snap-align: center;
+      cursor: pointer;
+    }
+    .wheel-item.selected {
+      color: #1e3a8a;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .modal-actions.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .modal-btn {
+      padding: 12px 8px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+    }
+    .modal-btn.cancel { background: #f1f5f9; color: var(--muted); }
+    .modal-btn.confirm { background: var(--primary); color: #fff; }
+    .modal-btn.success { background: var(--success); color: #fff; }
+    .modal-btn.danger { background: #fee2e2; color: #991b1b; }
+
+    /* BUTONLAR & KARTLAR */
+    .chip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .chip-grid.cols-1 { grid-template-columns: 1fr; }
+    .chip-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    button.chip, label.photo-btn {
+      display: block;
+      width: 100%;
+      padding: 13px 8px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    label.photo-btn {
+      background: #eff6ff;
+      border-color: var(--primary);
+      color: #1e3a8a;
+    }
+    button.chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+    }
+    button.chip.danger.active {
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+    .photo-preview-wrap {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f1f5f9;
+      padding: 8px;
+      border-radius: 12px;
+    }
+    .photo-preview-wrap img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .remove-photo-btn, .remove-item-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #fca5a5;
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .remove-photo-btn { margin-left: auto; }
+    .sub-box {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+    }
+
+    .feed-item-card {
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 11px 12px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .feed-item-info { flex: 1; cursor: pointer; }
+    .feed-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .edit-item-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .feed-item-info strong {
+      display: block;
+      font-size: 15px;
+      color: #0f172a;
+    }
+    .feed-item-info span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .mid-gas-box {
+      background: #fffbeb;
+      border: 1.5px solid #fcd34d;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .mid-gas-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 6px;
+    }
+    .mid-gas-box button.chip { padding: 9px 6px; font-size: 14px; }
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .step-btn {
+      width: 52px;
+      height: 50px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .quick-pills {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .q-pill {
+      flex: 1;
+      padding: 9px 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+    }
+    .add-feed-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: 14px;
+      border: 2px dashed var(--primary);
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .hidden { display: none !important; }
+    /* Uygulama içi rakam tuş takımı: telefon klavyesi hiç açılmaz */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .numpad button {
+      height: 50px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .numpad button:active { background: #e2e8f0; }
+    .numpad button.pad-ok { background: var(--primary); color: #fff; border-color: var(--primary); font-size: 18px; }
+    .numpad button.pad-del { font-size: 18px; color: #991b1b; }
+    .manual-time-input, .pad-input { cursor: pointer; caret-color: transparent; }
+    .manual-time-input.pad-active, .pad-input.pad-active {
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35);
+      background: #fffbeb !important;
+    }
+    .pad-input { text-align: center; font-size: 18px !important; font-weight: 800; }
+    .pad-hint { text-align: center; font-size: 12px; color: var(--muted); margin: -6px 0 10px; }
+    .sr-submit {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+      border: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    .photo-box {
+      margin-top: 12px;
+      border-radius: 12px;
+      background: #f1f5f9;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+      text-align: center;
+      padding: 0;
+    }
+    .photo-box img {
+      display: block;
+      width: 100%;
+      max-height: 260px;
+      object-fit: cover;
+      cursor: zoom-in;
+    }
+    .photo-drive-link {
+      display: block;
+      margin-top: 6px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 1150;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+    .lightbox img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .account-line {
+      text-align: right;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin: -4px 4px 8px 0;
+      word-break: break-all;
+    }
+    .err-banner {
+      background: #fee2e2;
+      border: 1.5px solid #fca5a5;
+      color: #991b1b;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .submit-wrap {
+      margin-top: 16px;
+      padding-bottom: 16px;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 17px;
+      border: none;
+      border-radius: 14px;
+      background: var(--success);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(22,163,74,0.28);
+    }
+    .submit-btn:disabled { background: #94a3b8; }
+    .toast {
+      position: fixed;
+      top: 20px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: #fff;
+      padding: 14px 22px; border-radius: 99px;
+      font-weight: 600; z-index: 1200;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toast" class="toast hidden">Kaydedildi 👶 Teşekkürler!</div>
+
+  <!-- ÜST SEKME GEÇİŞ ÇUBUĞU -->
+  <div class="top-tabs">
+    <button type="button" class="tab-btn active" id="tabBtnNew">➕ Yeni Kayıt</button>
+    <button type="button" class="tab-btn" id="tabBtnHistory">📋 Geçmiş Kayıtlar</button>
+  </div>
+
+  <div id="loginScreen" class="login-screen hidden">
+    <div class="login-logo">👶</div>
+    <div class="login-title">Bebek Takip</div>
+    <div class="login-sub">Devam etmek için aile listesinde kayıtlı Google hesabınızla giriş yapın. Bir kez giriş yaptıktan sonra uzun süre tekrar sorulmaz.</div>
+    <div id="gsiBtn"></div>
+    <div id="loginError" class="login-error"></div>
+  </div>
+
+  <div id="accountLine" class="account-line hidden"><span id="accountEmail"></span><button type="button" id="btnLogout">Çıkış</button></div>
+  <div id="errBanner" class="err-banner hidden"></div>
+
+  <!-- SON DURUM ÖZET ÇUBUĞU -->
+  <div class="status-bar">
+    <div class="status-item">
+      Son Beslenme
+      <strong id="stFeed">Yükleniyor...</strong>
+      <span class="status-sub" id="stFeedSub"></span>
+    </div>
+    <div class="status-item">
+      Son Bez
+      <strong id="stDiaper">Yükleniyor...</strong>
+      <span class="status-sub" id="stDiaperSub"></span>
+    </div>
+    <div class="cream-banner" id="creamBanner">
+      <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
+      <span class="cream-pill" id="stCreamBadge">-</span>
+    </div>
+  </div>
+
+  <!-- SEKME 1: YENİ KAYIT FORMU -->
+  <div id="viewNewRecord">
+    <div class="card">
+      <label class="sec-title">Formu Dolduran</label>
+      <select id="dolduran">
+        <option value="">Yükleniyor...</option>
+      </select>
+
+      <label class="sec-title" style="margin-top:14px;">Olay Tarihi ve Saati</label>
+      <div class="datetime-row">
+        <div class="date-wrap">
+          <span id="olayTarihText">--/--/----</span>
+          <input type="date" id="olayTarih" class="date-native" aria-label="Olay tarihi">
+        </div>
+        <button type="button" class="time-trigger-btn" id="btnOpenTimeModal">14:36</button>
+      </div>
+      <button type="button" class="now-btn" id="btnNow">🕒 Şu Anki Tarih ve Saate Sıfırla</button>
+    </div>
+
+    <div class="card">
+      <label class="sec-title">Kayıt Türü Seçin</label>
+      <div class="chip-grid cols-3" data-group="kayitTuru">
+        <button type="button" class="chip" data-val="Bez">🧷 Bez</button>
+        <button type="button" class="chip" data-val="Beslenme">🍼 Beslenme</button>
+        <button type="button" class="chip" data-val="Diğer">🩺 Diğer</button>
+      </div>
+    </div>
+
+    <!-- KOŞULLU DAL 1: BEZ -->
+    <div id="secBez" class="hidden">
+      <div class="card">
+        <label class="sec-title">Bez Durumu</label>
+        <div class="chip-grid" data-group="bezDurumu">
+          <button type="button" class="chip active" data-val="Kuru">✨ Kuru</button>
+          <button type="button" class="chip" data-val="Sadece çiş">💧 Sadece çiş</button>
+          <button type="button" class="chip" data-val="Sadece kaka">💩 Sadece kaka</button>
+          <button type="button" class="chip" data-val="Çiş + kaka">💧💩 Çiş + kaka</button>
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">Pişik / Kızarıklık Var mı?</label>
+        <div class="chip-grid cols-3" data-group="pisik">
+          <button type="button" class="chip active" data-val="Yok">Yok</button>
+          <button type="button" class="chip" data-val="Hafif">Hafif</button>
+          <button type="button" class="chip danger" data-val="Belirgin">Belirgin</button>
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">🧴 Pişik Kremi Sürüldü mü? (Her 3 bezde 1)</label>
+        <div class="chip-grid" data-group="pisikKremi">
+          <button type="button" class="chip" data-val="Evet">✅ Evet, sürüldü</button>
+          <button type="button" class="chip active" data-val="Hayır">❌ Hayır</button>
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">Not (Opsiyonel)</label>
+        <textarea id="bezNot" rows="2" placeholder="Ek detay ekleyin..."></textarea>
+      </div>
+
+      <div class="card hidden" id="secKaka">
+        <label class="sec-title">Kaka Miktarı</label>
+        <div class="chip-grid cols-3" data-group="kakaMiktari">
+          <button type="button" class="chip active" data-val="Az (leke)">Az (leke)</button>
+          <button type="button" class="chip" data-val="Orta">Orta</button>
+          <button type="button" class="chip" data-val="Çok (taşma)">Çok (taşma)</button>
+        </div>
+
+        <div id="secKakaDetailFields" class="hidden">
+          <label class="sec-title" style="margin-top:14px;">Kaka Rengi</label>
+          <div class="chip-grid" data-group="kakaRengi">
+            <button type="button" class="chip" data-val="Hardal sarısı">🟡 Hardal sarısı</button>
+            <button type="button" class="chip" data-val="Siyah-yeşil (mekonyum)">⚫ Mekonyum</button>
+            <button type="button" class="chip" data-val="Yeşil">🟢 Yeşil</button>
+            <button type="button" class="chip" data-val="Kahverengi">🟤 Kahverengi</button>
+            <button type="button" class="chip" data-val="Turuncu">🟠 Turuncu</button>
+            <button type="button" class="chip danger" data-val="Beyaz/gri/soluk">⚪ Beyaz/gri/soluk</button>
+            <button type="button" class="chip danger" data-val="Kırmızı/kanlı">🔴 Kırmızı/kanlı</button>
+            <button type="button" class="chip" data-val="Diğer">📝 Diğer</button>
+          </div>
+
+          <div id="boxKakaRengiDiger" class="sub-box hidden">
+            <label class="sec-title">Kaka Rengi (Elle Yazın)</label>
+            <input type="text" id="kakaRengiDigerText" placeholder="Rengi yazın...">
+          </div>
+
+          <label class="sec-title" style="margin-top:14px;">Kaka Kıvamı</label>
+          <div class="chip-grid cols-3" data-group="kakaKivami">
+            <button type="button" class="chip" data-val="Sulu">Sulu</button>
+            <button type="button" class="chip" data-val="Yumuşak/macun">Macun</button>
+            <button type="button" class="chip" data-val="Taneli">Taneli</button>
+            <button type="button" class="chip" data-val="Sert/topak">Sert/topak</button>
+            <button type="button" class="chip" data-val="Mukuslu">Mukuslu</button>
+          </div>
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">Bez Fotoğrafı (Opsiyonel)</label>
+        <div class="chip-grid">
+          <label for="bezFotoKamera" class="photo-btn">📸 Kamera ile Çek</label>
+          <label for="bezFotoGaleri" class="photo-btn">🖼️ Galeriden Seç</label>
+        </div>
+        <input type="file" id="bezFotoKamera" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="bezFotoGaleri" accept="image/*" class="hidden">
+
+        <div id="photoPreviewWrap" class="photo-preview-wrap hidden">
+          <img id="photoPreviewImg" src="" alt="Önizleme">
+          <span id="photoFileName" style="font-size:13px;font-weight:600;word-break:break-all;"></span>
+          <button type="button" class="remove-photo-btn" id="btnRemovePhoto">Sil</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KOŞULLU DAL 2: BESLENME -->
+    <div id="secBeslenme" class="hidden">
+      <div class="card">
+        <label class="sec-title">Beslenme Öğeleri (Meme, Mama veya Sağılmış Süt)</label>
+        <div id="feedItemsContainer"></div>
+        <button type="button" class="add-feed-btn" id="btnOpenFeedModal">+ Beslenme Ekle</button>
+      </div>
+
+      <div class="card">
+        <label class="sec-title">Beslenme Sonrası Gaz Çıkardı mı?</label>
+        <div class="chip-grid" data-group="gaz">
+          <button type="button" class="chip" data-val="Evet">✅ Evet</button>
+          <button type="button" class="chip" data-val="Hayır">❌ Hayır</button>
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">Gelme</label>
+        <div class="chip-grid cols-3" data-group="kusma">
+          <button type="button" class="chip" data-val="Yok">Yok</button>
+          <button type="button" class="chip" data-val="Az (gelme)">Az (gelme)</button>
+          <button type="button" class="chip danger" data-val="Belirgin gelme">Belirgin gelme</button>
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">Beslenme Notu (Opsiyonel)</label>
+        <textarea id="beslenmeNot" rows="2" placeholder="Örn: Sağ memede EDS ile 15 ml mama verildi"></textarea>
+      </div>
+    </div>
+
+    <!-- KOŞULLU DAL 3: DİĞER -->
+    <div id="secDiger" class="hidden">
+      <div class="card">
+        <label class="sec-title">Ne Oldu?</label>
+        <div class="chip-grid" data-group="neOlduSecimi">
+          <button type="button" class="chip" data-val="İlaç/damla verildi">💊 İlaç / Damla verildi</button>
+          <button type="button" class="chip" data-val="Ateş ölçüldü">🌡️ Ateş ölçüldü</button>
+          <button type="button" class="chip" data-val="Kusma">🤮 Kusma</button>
+          <button type="button" class="chip" data-val="Diğer">📝 Diğer</button>
+        </div>
+
+        <div id="boxDigerOlayText" class="sub-box hidden">
+          <label class="sec-title">Olay Açıklaması (Elle Yazın)</label>
+          <input type="text" id="digerOlayText" placeholder="Ne olduğunu yazın...">
+        </div>
+
+        <div id="boxIlac" class="sub-box hidden">
+          <label class="sec-title">İlaç / Damla Seçimi</label>
+          <div class="chip-grid cols-1" data-group="ilacSecimi">
+            <button type="button" class="chip active" data-val="D Vitamini (3 damla)">💧 D Vitamini (3 damla)</button>
+          </div>
+        </div>
+
+        <div id="boxAtes" class="sub-box hidden">
+          <label class="sec-title">Ateş (°C)</label>
+          <input type="number" id="ates" step="0.1" inputmode="decimal" placeholder="Örn: 36.8">
+        </div>
+
+        <label class="sec-title" style="margin-top:14px;">Not (Opsiyonel)</label>
+        <textarea id="digerNot" rows="2" placeholder="Ek detay ekleyin..."></textarea>
+      </div>
+    </div>
+
+    <div class="submit-wrap hidden" id="submitBar">
+      <button type="button" class="submit-btn" id="submitBtn">KAYDET</button>
+    </div>
+  </div>
+
+  <!-- SEKME 2: GEÇMİŞ KAYITLAR -->
+  <div id="viewHistory" class="hidden">
+    <div class="hist-controls-card">
+      <div class="date-range-row" id="histRangeGroup">
+        <button type="button" class="range-pill active" data-hrange="ALL">Tümü</button>
+        <button type="button" class="range-pill" data-hrange="1D">Bugün</button>
+        <button type="button" class="range-pill" data-hrange="3D">Son 3 Gün</button>
+        <button type="button" class="range-pill" data-hrange="7D">Son 1 Hafta</button>
+        <button type="button" class="range-pill" data-hrange="30D">Son 1 Ay</button>
+      </div>
+
+      <div class="filter-row" id="histFilterGroup">
+        <button type="button" class="filter-chip active" data-hfilter="ALL">Tümü</button>
+        <button type="button" class="filter-chip" data-hfilter="Beslenme">🍼 Beslenme</button>
+        <button type="button" class="filter-chip" data-hfilter="Bez">🧷 Bez</button>
+        <button type="button" class="filter-chip" data-hfilter="Diğer">🩺 Diğer</button>
+      </div>
+
+      <div class="sort-size-bar">
+        <button type="button" class="mini-ctrl-btn" id="btnToggleSort">⬇ En Yeni</button>
+        <select id="pageSizeSelect" class="mini-select" aria-label="Sayfa Boyutu">
+          <option value="10" selected>Sayfada 10</option>
+          <option value="25">Sayfada 25</option>
+          <option value="100">Sayfada 100</option>
+        </select>
+        <button type="button" class="mini-ctrl-btn" id="btnRefreshHistory" style="color:var(--primary);">↻</button>
+      </div>
+    </div>
+
+    <div id="historyListContainer">
+      <div class="card" style="text-align:center;color:#64748b;">Yükleniyor...</div>
+    </div>
+
+    <div class="pagination-bar hidden" id="paginationBar">
+      <button type="button" class="page-btn" id="btnPrevPage">◀ Önceki</button>
+      <div class="page-info" id="pageInfoText">Sayfa 1 / 1</div>
+      <button type="button" class="page-btn" id="btnNextPage">Sonraki ▶</button>
+    </div>
+  </div>
+
+  <!-- KAYIT DETAY VE DÜZENLEME MODALI -->
+  <div id="detailModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="detailModalTitle">Kayıt Detayı</div>
+
+      <div id="detailViewSection">
+        <div id="detailModalBody"></div>
+        <div class="modal-actions cols-3">
+          <button type="button" class="modal-btn danger" id="btnDeleteRecord">🗑️ Sil</button>
+          <button type="button" class="modal-btn confirm" id="btnEnterEditMode">✏️ Düzenle</button>
+          <button type="button" class="modal-btn cancel" id="btnCloseDetailModal">Kapat</button>
+        </div>
+      </div>
+
+      <div id="detailEditSection" class="hidden">
+        <div class="edit-field">
+          <label>Formu Dolduran</label>
+          <select id="editDolduran">
+          </select>
+        </div>
+
+        <div class="edit-grid-2">
+          <div class="edit-field">
+            <label>Olay Tarihi</label>
+            <div class="date-wrap small">
+              <span id="editTarihText">--/--/----</span>
+              <input type="date" id="editTarih" class="date-native" aria-label="Olay tarihi">
+            </div>
+          </div>
+          <div class="edit-field">
+            <label>Olay Saati</label>
+            <input type="time" id="editSaat" style="height:44px;font-size:16px;">
+          </div>
+        </div>
+
+        <!-- BEZ DÜZENLEME -->
+        <div id="editFieldsBez" class="hidden">
+          <div class="edit-grid-2">
+            <div class="edit-field">
+              <label>Bez Durumu</label>
+              <select id="editBezDurumu">
+                <option value="Kuru">Kuru</option>
+                <option value="Sadece çiş">Sadece çiş</option>
+                <option value="Sadece kaka">Sadece kaka</option>
+                <option value="Çiş + kaka">Çiş + kaka</option>
+              </select>
+            </div>
+            <div class="edit-field">
+              <label>Pişik</label>
+              <select id="editPisik">
+                <option value="Yok">Yok</option>
+                <option value="Hafif">Hafif</option>
+                <option value="Belirgin">Belirgin</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="edit-grid-2">
+            <div class="edit-field">
+              <label>Pişik Kremi</label>
+              <select id="editPisikKremi">
+                <option value="Hayır">Hayır</option>
+                <option value="Evet">Evet</option>
+              </select>
+            </div>
+            <div class="edit-field">
+              <label>Kaka Miktarı</label>
+              <select id="editKakaMiktari">
+                <option value="">-</option>
+                <option value="Az (leke)">Az (leke)</option>
+                <option value="Orta">Orta</option>
+                <option value="Çok (taşma)">Çok (taşma)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="editKakaFields">
+          <div class="edit-field">
+            <label>Kaka Rengi</label>
+            <select id="editKakaRengiSelect">
+              <option value="">-</option>
+              <option value="Hardal sarısı">Hardal sarısı</option>
+              <option value="Siyah-yeşil (mekonyum)">Siyah-yeşil (mekonyum)</option>
+              <option value="Yeşil">Yeşil</option>
+              <option value="Kahverengi">Kahverengi</option>
+              <option value="Turuncu">Turuncu</option>
+              <option value="Beyaz/gri/soluk">Beyaz/gri/soluk</option>
+              <option value="Kırmızı/kanlı">Kırmızı/kanlı</option>
+              <option value="Diğer">Diğer</option>
+            </select>
+          </div>
+          <div class="edit-field hidden" id="editBoxKakaRengiDiger">
+            <label>Kaka Rengi (Elle Yazın)</label>
+            <input type="text" id="editKakaRengiInput" placeholder="Rengi yazın...">
+          </div>
+
+          <div class="edit-field">
+            <label>Kaka Kıvamı</label>
+            <select id="editKakaKivami">
+              <option value="">-</option>
+              <option value="Sulu">Sulu</option>
+              <option value="Yumuşak/macun">Macun</option>
+              <option value="Taneli">Taneli</option>
+              <option value="Sert/topak">Sert/topak</option>
+              <option value="Mukuslu">Mukuslu</option>
+            </select>
+          </div>
+          </div>
+
+          <div class="edit-field">
+            <label>Not</label>
+            <textarea id="editBezNot" rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- BESLENME DÜZENLEME -->
+        <div id="editFieldsBeslenme" class="hidden">
+          <div class="edit-field">
+            <label>Beslenme Kalemleri (Saat • Çeşit • dk/ml)</label>
+            <div id="editFeedItemsList"></div>
+            <button type="button" class="mini-add-btn" id="btnAddEditFeedItem">+ Yeni Kalem Ekle</button>
+          </div>
+
+          <div class="edit-grid-2">
+            <div class="edit-field">
+              <label>Gaz Çıkardı mı?</label>
+              <select id="editGaz">
+                <option value="">-</option>
+                <option value="Evet">Evet</option>
+                <option value="Hayır">Hayır</option>
+              </select>
+            </div>
+            <div class="edit-field">
+              <label>Gelme</label>
+              <select id="editGelme">
+                <option value="">-</option>
+                <option value="Yok">Yok</option>
+                <option value="Az (gelme)">Az (gelme)</option>
+                <option value="Belirgin gelme">Belirgin gelme</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="edit-field">
+            <label>Beslenme Notu</label>
+            <textarea id="editBeslenmeNot" rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- DİĞER DÜZENLEME -->
+        <div id="editFieldsDiger" class="hidden">
+          <div class="edit-field">
+            <label>Ne Oldu?</label>
+            <select id="editNeOlduSelect">
+              <option value="İlaç/damla verildi">İlaç/damla verildi</option>
+              <option value="Ateş ölçüldü">Ateş ölçüldü</option>
+              <option value="Kusma">Kusma</option>
+              <option value="Diğer">Diğer</option>
+            </select>
+          </div>
+          <div class="edit-field hidden" id="editBoxDigerOlay">
+            <label>Olay Açıklaması (Elle Yazın)</label>
+            <input type="text" id="editNeOlduInput" placeholder="Ne olduğunu yazın...">
+          </div>
+          <div class="edit-grid-2">
+            <div class="edit-field">
+              <label>İlaç / Doz</label>
+              <input type="text" id="editIlac">
+            </div>
+            <div class="edit-field">
+              <label>Ateş (°C)</label>
+              <input type="number" id="editAtes" step="0.1" inputmode="decimal">
+            </div>
+          </div>
+          <div class="edit-field">
+            <label>Not</label>
+            <textarea id="editDigerNot" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="modal-btn cancel" id="btnCancelEditMode">Vazgeç</button>
+          <button type="button" class="modal-btn success" id="btnSaveEdit">💾 Kaydet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOTOĞRAF TAM EKRAN -->
+  <div id="photoLightbox" class="lightbox hidden">
+    <button type="button" class="lightbox-close" id="btnCloseLightbox">✕</button>
+    <img id="lightboxImg" src="" alt="Bez fotoğrafı">
+  </div>
+
+  <!-- SAAT SEÇİM POPUP MODALI (ORTAK) -->
+  <div id="timeModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="timeModalHeaderTitle">Saati Kaydırın veya Dokunup Yazın</div>
+      <div class="manual-time-row">
+        <input type="text" id="manualHour" class="manual-time-input" readonly inputmode="none" tabindex="-1">
+        <span class="manual-colon">:</span>
+        <input type="text" id="manualMinute" class="manual-time-input" readonly inputmode="none" tabindex="-1">
+      </div>
+      <div class="pad-hint" id="timePadHint">Yazmak için saate veya dakikaya dokunun</div>
+      <div class="numpad hidden" id="timePad"></div>
+      <div class="wheel-container" id="wheelBox">
+        <div class="wheel-highlight"></div>
+        <div class="wheel-col" id="wheelHour"></div>
+        <div class="wheel-col" id="wheelMinute"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel" id="btnCancelTime">İptal</button>
+        <button type="button" class="modal-btn confirm" id="btnConfirmTime">Tamam</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BESLENME EKLE POPUP MODALI -->
+  <div id="feedModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="feedModalTitle">Beslenme Öğesi Ekle</div>
+
+      <div style="margin-bottom:12px;">
+        <label class="sec-title">Başlangıç Saati</label>
+        <button type="button" class="time-trigger-btn" id="btnOpenFeedItemTime" style="height:46px;font-size:18px;">14:36</button>
+      </div>
+
+      <div class="chip-grid cols-3" id="modalFeedKindGroup">
+        <button type="button" class="chip active" data-feedkind="meme">🤱 Meme</button>
+        <button type="button" class="chip" data-feedkind="mama">🍼 Mama</button>
+        <button type="button" class="chip" data-feedkind="sut">🥛 Sağılmış</button>
+      </div>
+
+      <div id="modalMemeFields" class="sub-box">
+        <label class="sec-title">Hangi Meme?</label>
+        <div class="chip-grid" id="modalSideGroup">
+          <button type="button" class="chip active" data-side="Sol">Sol Meme</button>
+          <button type="button" class="chip" data-side="Sağ">Sağ Meme</button>
+        </div>
+
+        <label class="sec-title" style="margin-top:12px;">Süre (dk)</label>
+        <div class="stepper">
+          <button type="button" class="step-btn" data-mstep="-1">-1</button>
+          <input type="text" id="modalSureInput" class="pad-input" value="15" readonly inputmode="none" tabindex="-1">
+          <button type="button" class="step-btn" data-mstep="1">+1</button>
+        </div>
+        <div class="quick-pills">
+          <button type="button" class="q-pill" data-msure="10">10 dk</button>
+          <button type="button" class="q-pill" data-msure="15">15 dk</button>
+          <button type="button" class="q-pill" data-msure="20">20 dk</button>
+        </div>
+        <div class="numpad hidden" id="surePad" style="margin-top:10px;"></div>
+      </div>
+
+      <div id="modalMlFields" class="sub-box hidden">
+        <label class="sec-title">Verilen Miktar (ml)</label>
+        <div class="stepper">
+          <button type="button" class="step-btn" data-mlstep="-5">-5</button>
+          <input type="text" id="modalMlInput" class="pad-input" value="15" readonly inputmode="none" tabindex="-1">
+          <button type="button" class="step-btn" data-mlstep="5">+5</button>
+        </div>
+        <div class="quick-pills">
+          <button type="button" class="q-pill" data-mml="15">15 ml</button>
+          <button type="button" class="q-pill" data-mml="30">30 ml</button>
+          <button type="button" class="q-pill" data-mml="45">45 ml</button>
+          <button type="button" class="q-pill" data-mml="60">60 ml</button>
+        </div>
+        <div class="numpad hidden" id="mlPad" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel" id="btnCancelFeedModal">İptal</button>
+        <button type="button" class="modal-btn confirm" id="btnConfirmFeedModal">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var ITEM_H = 36;
+
+      function newId() {
+        try { if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID(); } catch (e) {}
+        return 'id-' + Date.now().toString(36) + '-' +
+          Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+      }
+
+      var state = {
+        formId: newId(),          // aynı form iki kez gönderilirse sunucu ikinci kaydı oluşturmaz
+        timeTouched: false,       // kullanıcı saati elle seçtiyse otomatik güncelleme yapma
+        lastAutoTime: Date.now(),
+
+        selectedHour: 12,
+        selectedMinute: 0,
+        tempHour: 12,
+        tempMinute: 0,
+        timeModalTarget: 'main',
+        modalItemHour: 12,
+        modalItemMinute: 0,
+        nextBreast: '',
+
+        kayitTuru: '',
+        bezDurumu: 'Kuru',
+        pisik: 'Yok',
+        pisikKremi: 'Hayır',
+        kakaRengi: '',
+        kakaKivami: '',
+        kakaMiktari: 'Az (leke)',
+
+        feedItems: [],
+        midGas: {},
+        gaz: '',
+        kusma: '',
+        neOlduSecimi: '',
+        ilacSecimi: 'D Vitamini (3 damla)',
+        photoBase64: '',
+        photoName: '',
+        modalFeedKind: 'meme',
+        editingFeedIdx: -1,       // -1: yeni öğe, >=0: o öğe düzenleniyor
+        modalSide: 'Sol',
+
+        currentFiltered: [],      // sadece ekrandaki sayfanın kayıtları
+        historyReqId: 0,
+        activeDetailRecord: null,
+        editFeedItems: [],
+        historyFilter: 'ALL',
+        historyRange: 'ALL',
+        sortOrder: 'DESC',
+        pageSize: 10,
+        currentPage: 1
+      };
+
+      var KNOWN_COLORS = ['Hardal sarısı', 'Siyah-yeşil (mekonyum)', 'Yeşil', 'Kahverengi', 'Turuncu', 'Beyaz/gri/soluk', 'Kırmızı/kanlı'];
+      var KNOWN_EVENTS = ['İlaç/damla verildi', 'Ateş ölçüldü', 'Kusma'];
+
+      function $(id) { return document.getElementById(id); }
+
+      function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+      function esc(s) {
+        return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      // "2026-11-14" -> "14/11/2026"
+      function trDate(iso) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+        return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '--/--/----';
+      }
+
+      function syncDateText(inputId) {
+        $(inputId + 'Text').textContent = trDate($(inputId).value);
+      }
+
+      function errMsg(err) { return (err && err.message) ? err.message : String(err); }
+
+      function showToast(msg) {
+        var t = $('toast');
+        t.textContent = msg;
+        t.classList.remove('hidden');
+        setTimeout(function() { t.classList.add('hidden'); }, 1800);
+      }
+
+      function showError(msg) {
+        var b = $('errBanner');
+        if (!msg) { b.classList.add('hidden'); return; }
+        b.textContent = '⚠️ ' + msg;
+        b.classList.remove('hidden');
+      }
+
+      /* ---------------- SUNUCU (Apps Script veri servisi) ---------------- */
+
+      var CFG = window.APP_CONFIG || {};
+      var SESSION_KEY = 'bt_session';
+
+      function getSession() { try { return localStorage.getItem(SESSION_KEY) || ''; } catch (e) { return ''; } }
+      function setSession(v) { try { if (v) localStorage.setItem(SESSION_KEY, v); else localStorage.removeItem(SESSION_KEY); } catch (e) {} }
+
+      function hasServer() { return !!(CFG.API_URL && getSession()); }
+
+      // Apps Script'e JSON isteği. text/plain gönderiyoruz ki tarayıcı ön-kontrol (CORS preflight) yapmasın.
+      function postApi(body) {
+        return fetch(CFG.API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(body),
+          redirect: 'follow'
+        }).then(function(r) {
+          if (!r.ok) throw new Error('Sunucu hatası (' + r.status + ')');
+          return r.json();
+        }, function() {
+          throw new Error('İnternet bağlantısı yok veya sunucuya ulaşılamadı.');
+        }).then(function(res) {
+          if (!res || !res.ok) {
+            var e = new Error((res && res.error) || 'Bilinmeyen hata');
+            e.code = res && res.code;
+            throw e;
+          }
+          return res.data;
+        });
+      }
+
+      function apiCall(action, args) {
+        return postApi({ action: action, session: getSession(), args: args || [] })
+          .catch(function(err) {
+            if (err.code === 'AUTH') onAuthLost(err.message);
+            throw err;
+          });
+      }
+
+      // Zincirli çağrı biçimi: runApi().withSuccessHandler(f).withFailureHandler(g).islem(arg)
+      function runApi() {
+        var ok = function() {}, fail = function(e) { console.error(e); };
+        var r = {
+          withSuccessHandler: function(f) { ok = f; return r; },
+          withFailureHandler: function(f) { fail = f; return r; }
+        };
+        ['getBootstrap', 'getLastStatus', 'getRecordsPage', 'saveRecord', 'updateRecord', 'deleteRecord', 'getPhoto']
+          .forEach(function(name) {
+            r[name] = function() {
+              var args = Array.prototype.slice.call(arguments);
+              apiCall(name, args).then(function(d) { ok(d); }, function(e) { fail(e); });
+            };
+          });
+        return r;
+      }
+
+      /* ---------------- GİRİŞ ---------------- */
+
+      var gsiReady = false;
+
+      function showLogin(msg) {
+        $('loginScreen').classList.remove('hidden');
+        $('loginError').textContent = msg || '';
+        initGsi();
+      }
+
+      function hideLogin() { $('loginScreen').classList.add('hidden'); }
+
+      function initGsi() {
+        if (gsiReady) return;
+        if (!window.google || !google.accounts || !google.accounts.id) { setTimeout(initGsi, 250); return; }
+        gsiReady = true;
+        google.accounts.id.initialize({
+          client_id: CFG.CLIENT_ID,
+          callback: onGoogleCredential,
+          auto_select: true,
+          cancel_on_tap_outside: false,
+          itp_support: true
+        });
+        google.accounts.id.renderButton($('gsiBtn'), {
+          theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: 'tr', width: 280
+        });
+        google.accounts.id.prompt();
+      }
+
+      function onGoogleCredential(resp) {
+        $('loginError').textContent = 'Giriş yapılıyor...';
+        postApi({ action: 'login', idToken: resp.credential }).then(function(res) {
+          setSession(res.session);
+          $('loginError').textContent = '';
+          hideLogin();
+          bootstrap();
+        }, function(err) {
+          $('loginError').textContent = errMsg(err);
+        });
+      }
+
+      function onAuthLost(msg) {
+        setSession('');
+        showLogin(msg);
+      }
+
+      function logout() {
+        var s = getSession();
+        setSession('');
+        try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) {}
+        if (CFG.API_URL && s) postApi({ action: 'logout', session: s }).catch(function() {});
+        $('accountLine').classList.add('hidden');
+        showLogin('');
+      }
+
+      function findParentWithAttr(el, attrName) {
+        while (el && el !== document) {
+          if (el.hasAttribute && el.hasAttribute(attrName)) return el;
+          el = el.parentNode;
+        }
+        return null;
+      }
+
+      function findParentButton(el) {
+        while (el && el !== document) {
+          if (el.tagName === 'BUTTON') return el;
+          el = el.parentNode;
+        }
+        return null;
+      }
+
+      function findParentHistCard(el) {
+        while (el && el !== document) {
+          if (el.classList && el.classList.contains('hist-item')) return el;
+          el = el.parentNode;
+        }
+        return null;
+      }
+
+      function setActiveChip(groupEl, activeBtn) {
+        if (!groupEl) return;
+        var btns = groupEl.getElementsByTagName('button');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+        if (activeBtn) activeBtn.classList.add('active');
+      }
+
+      function itemLabel(it) {
+        if (it.kind === 'meme') return it.meme + ' Meme — ' + it.sure + ' dk';
+        return (it.kind === 'sut' ? 'Sağılmış Süt' : 'Mama') + ' — ' + it.ml + ' ml';
+      }
+
+      /* ---------------- SEKMELER & GEÇMİŞ ---------------- */
+
+      function switchTab(tabName) {
+        var isNew = (tabName === 'new');
+        $('tabBtnNew').classList.toggle('active', isNew);
+        $('tabBtnHistory').classList.toggle('active', !isNew);
+        $('viewNewRecord').classList.toggle('hidden', !isNew);
+        $('viewHistory').classList.toggle('hidden', isNew);
+        if (!isNew) { state.currentPage = 1; loadHistory(); }
+      }
+
+      function historySinceTs() {
+        var now = new Date();
+        if (state.historyRange === '1D') return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        if (state.historyRange === '3D') return now.getTime() - 3 * 86400000;
+        if (state.historyRange === '7D') return now.getTime() - 7 * 86400000;
+        if (state.historyRange === '30D') return now.getTime() - 30 * 86400000;
+        return 0;
+      }
+
+      // Sunucudan SADECE görüntülenen sayfayı ister
+      function loadHistory() {
+        var container = $('historyListContainer');
+        container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Kayıtlar yükleniyor...</div>';
+        $('btnPrevPage').disabled = true;
+        $('btnNextPage').disabled = true;
+        if (!hasServer()) return;
+
+        var reqId = ++state.historyReqId; // hızlı sayfa değişiminde eski cevabı yok say
+        runApi().withSuccessHandler(function(res) {
+          if (reqId !== state.historyReqId) return;
+          state.currentPage = res.page;
+          renderHistoryList(res);
+        }).withFailureHandler(function(err) {
+          if (reqId !== state.historyReqId) return;
+          container.innerHTML = '<div class="card" style="color:#dc2626;">Yükleme hatası: ' + esc(errMsg(err)) + '</div>';
+          $('paginationBar').classList.add('hidden');
+        }).getRecordsPage({
+          page: state.currentPage,
+          pageSize: state.pageSize,
+          type: state.historyFilter,
+          sinceTs: historySinceTs(),
+          sort: state.sortOrder
+        });
+      }
+
+      function renderHistoryList(res) {
+        var container = $('historyListContainer');
+        var pagBar = $('paginationBar');
+        var list = res.records || [];
+        state.currentFiltered = list;
+
+        if (res.total === 0) {
+          container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Seçili filtreye uygun kayıt bulunamadı.</div>';
+          pagBar.classList.add('hidden');
+          return;
+        }
+
+        container.innerHTML = '';
+        for (var i = 0; i < list.length; i++) {
+          var r = list[i];
+          var typeClass = 'type-diger', badgeText = 'Diğer', icon = '🩺', title = 'Diğer', summary = [];
+
+          if (r.type === 'Beslenme') {
+            typeClass = 'type-beslenme'; badgeText = 'Beslenme'; icon = '🍼';
+            title = r.feedType || 'Beslenme';
+            if (r.totalMin > 0) summary.push('Emzirme ' + r.totalMin + ' dk (Sol ' + r.leftMin + ' / Sağ ' + r.rightMin + ')');
+            if (r.mamaMl > 0) summary.push('Mama ' + r.mamaMl + ' ml');
+            if (r.sutMl > 0) summary.push('Sağılmış ' + r.sutMl + ' ml');
+          } else if (r.type === 'Bez') {
+            typeClass = 'type-bez'; badgeText = 'Bez'; icon = '🧷';
+            title = r.diaperStatus || 'Bez Değişimi';
+            if (r.cream === 'Evet') summary.push('🧴 Krem sürüldü');
+            if (r.poopAmount) summary.push('Miktar: ' + r.poopAmount);
+            if (r.poopColor) summary.push(r.poopColor);
+            if (r.rash && r.rash !== 'Yok') summary.push('Pişik: ' + r.rash);
+            if (r.photoUrl) summary.push('📷');
+          } else {
+            title = r.event || 'Diğer';
+            if (r.med) summary.push(r.med);
+            if (r.temp !== '') summary.push('Ateş: ' + r.temp + ' °C');
+          }
+          if (r.note) summary.push('📝 ' + r.note);
+
+          var card = document.createElement('div');
+          card.className = 'hist-item ' + typeClass;
+          card.setAttribute('data-detail-idx', i);
+          card.innerHTML =
+            '<div class="hist-top">' +
+              '<span class="type-badge">' + icon + ' ' + badgeText + '</span>' +
+              '<span><strong>' + esc(r.time) + '</strong> • ' + esc(r.user) + '</span>' +
+            '</div>' +
+            '<div class="hist-title">' + esc(title) + '</div>' +
+            (summary.length ? '<div class="hist-detail">' + esc(summary.join(' • ')) + '</div>' : '') +
+            '<div class="hist-tap-hint">Görüntüle / Düzenle ›</div>';
+          container.appendChild(card);
+        }
+
+        pagBar.classList.remove('hidden');
+        $('pageInfoText').textContent = 'Sayfa ' + res.page + ' / ' + res.totalPages + ' (' + res.total + ' kayıt)';
+        $('btnPrevPage').disabled = (res.page <= 1);
+        $('btnNextPage').disabled = (res.page >= res.totalPages);
+        state.totalPages = res.totalPages;
+        window.scrollTo(0, 0);
+      }
+
+      /* ---------------- DETAY / DÜZENLE / SİL ---------------- */
+
+      function openRecordDetail(idx) {
+        var r = state.currentFiltered[idx];
+        if (!r) return;
+        state.activeDetailRecord = r;
+
+        $('detailModalTitle').textContent = r.type + ' Detayı';
+        $('detailViewSection').classList.remove('hidden');
+        $('detailEditSection').classList.add('hidden');
+
+        var rows = [['Olay Zamanı', r.time], ['Kaydeden', r.user], ['Kayıt Türü', r.type]];
+
+        if (r.type === 'Beslenme') {
+          if (r.feedType) rows.push(['Beslenme Şekli', r.feedType]);
+          for (var j = 0; j < r.items.length; j++) {
+            var it = r.items[j];
+            if (j > 0 && it.araGaz) rows.push(['  ↳ Arada gaz', it.araGaz]);
+            rows.push([(j + 1) + '. Kalem' + (it.startTime ? ' (' + it.startTime + ')' : ''), itemLabel(it)]);
+          }
+          if (r.totalMin > 0) rows.push(['Toplam Emzirme', r.totalMin + ' dk (Sol ' + r.leftMin + ' / Sağ ' + r.rightMin + ')']);
+          if (r.mamaMl > 0) rows.push(['Toplam Mama', r.mamaMl + ' ml']);
+          if (r.sutMl > 0) rows.push(['Toplam Sağılmış Süt', r.sutMl + ' ml']);
+          if (r.gas) rows.push(['Gaz Çıkardı mı?', r.gas]);
+          if (r.vomit) rows.push(['Gelme', r.vomit]);
+        } else if (r.type === 'Bez') {
+          if (r.diaperStatus) rows.push(['Bez Durumu', r.diaperStatus]);
+          if (r.rash) rows.push(['Pişik Durumu', r.rash]);
+          if (r.cream) rows.push(['Pişik Kremi', r.cream]);
+          if (r.poopAmount) rows.push(['Kaka Miktarı', r.poopAmount]);
+          if (r.poopColor) rows.push(['Kaka Rengi', r.poopColor]);
+          if (r.poopCons) rows.push(['Kaka Kıvamı', r.poopCons]);
+        } else {
+          if (r.event) rows.push(['Olay', r.event]);
+          if (r.med) rows.push(['İlaç / Doz', r.med]);
+          if (r.temp !== '') rows.push(['Ateş', r.temp + ' °C']);
+        }
+        if (r.note) rows.push(['Not', r.note]);
+
+        var bodyEl = $('detailModalBody');
+        bodyEl.innerHTML = '';
+        for (var i = 0; i < rows.length; i++) {
+          var rowDiv = document.createElement('div');
+          rowDiv.className = 'detail-row';
+          var lblSpan = document.createElement('span');
+          lblSpan.className = 'detail-label';
+          lblSpan.textContent = rows[i][0];
+          var valSpan = document.createElement('span');
+          valSpan.className = 'detail-val';
+          valSpan.textContent = rows[i][1];
+          rowDiv.appendChild(lblSpan);
+          rowDiv.appendChild(valSpan);
+          bodyEl.appendChild(rowDiv);
+        }
+
+        if (r.photoUrl) {
+          var box = document.createElement('div');
+          box.className = 'photo-box';
+          box.textContent = '📷 Fotoğraf yükleniyor...';
+          bodyEl.appendChild(box);
+
+          var a = document.createElement('a');
+          a.href = r.photoUrl;
+          a.target = '_blank';
+          a.className = 'photo-drive-link';
+          a.textContent = "Drive'da aç ›";
+          bodyEl.appendChild(a);
+
+          loadPhotoInto(box, r.id);
+        }
+
+        showModal('detailModalBackdrop');
+      }
+
+      var photoCache = {};
+
+      function showPhotoInBox(box, dataUrl) {
+        box.innerHTML = '';
+        var img = document.createElement('img');
+        img.src = dataUrl;
+        img.alt = 'Bez fotoğrafı';
+        img.setAttribute('data-lightbox', '1');
+        box.appendChild(img);
+      }
+
+      function loadPhotoInto(box, recordId) {
+        if (photoCache[recordId]) { showPhotoInBox(box, photoCache[recordId]); return; }
+        if (!hasServer()) return;
+        runApi().withSuccessHandler(function(dataUrl) {
+          photoCache[recordId] = dataUrl;
+          // Pencere bu arada başka bir kayda geçtiyse eski fotoğrafı gösterme
+          if (state.activeDetailRecord && state.activeDetailRecord.id === recordId && box.isConnected) {
+            showPhotoInBox(box, dataUrl);
+          }
+        }).withFailureHandler(function(err) {
+          box.textContent = '⚠️ ' + errMsg(err);
+        }).getPhoto(recordId);
+      }
+
+      function openLightbox(src) {
+        $('lightboxImg').src = src;
+        showModal('photoLightbox');
+      }
+
+      function closeLightbox() {
+        hideModal('photoLightbox');
+        $('lightboxImg').src = '';
+      }
+
+      function renderEditFeedItemsList() {
+        var listEl = $('editFeedItemsList');
+        listEl.innerHTML = '';
+        for (var i = 0; i < state.editFeedItems.length; i++) {
+          var it = state.editFeedItems[i];
+          var selVal = (it.kind === 'meme') ? ('meme_' + it.meme) : it.kind;
+          var numVal = (it.kind === 'meme') ? (it.sure || 15) : (it.ml || 15);
+          var unitPh = (it.kind === 'meme') ? 'dk' : 'ml';
+
+          var row = document.createElement('div');
+          row.className = 'edit-feed-item-row';
+          row.innerHTML =
+            '<input type="time" class="ef-time" value="' + esc(it.startTime || '') + '">' +
+            '<select class="ef-kind">' +
+              '<option value="meme_Sol" ' + (selVal === 'meme_Sol' ? 'selected' : '') + '>Sol Meme (dk)</option>' +
+              '<option value="meme_Sağ" ' + (selVal === 'meme_Sağ' ? 'selected' : '') + '>Sağ Meme (dk)</option>' +
+              '<option value="mama" ' + (selVal === 'mama' ? 'selected' : '') + '>Mama (ml)</option>' +
+              '<option value="sut" ' + (selVal === 'sut' ? 'selected' : '') + '>Sağılmış (ml)</option>' +
+            '</select>' +
+            '<input type="number" class="ef-val" value="' + esc(numVal) + '" placeholder="' + unitPh + '" inputmode="numeric">' +
+            '<button type="button" class="mini-del-btn" data-ef-del="' + i + '">✕</button>';
+          listEl.appendChild(row);
+        }
+      }
+
+      // DOM'daki değerleri okur; "arada gaz" bilgisini satır sırasına göre korur
+      function syncEditFeedItemsFromDOM() {
+        var times = document.getElementsByClassName('ef-time');
+        var kinds = document.getElementsByClassName('ef-kind');
+        var vals = document.getElementsByClassName('ef-val');
+        var updated = [];
+        for (var i = 0; i < kinds.length; i++) {
+          var prev = state.editFeedItems[i] || {};
+          var kVal = kinds[i].value;
+          var nVal = Math.max(1, Number(vals[i].value) || 0);
+          var base = { startTime: times[i].value || '', araGaz: prev.araGaz || '' };
+          if (kVal === 'meme_Sol' || kVal === 'meme_Sağ') {
+            base.kind = 'meme'; base.meme = (kVal === 'meme_Sol') ? 'Sol' : 'Sağ'; base.sure = nVal;
+          } else {
+            base.kind = kVal; base.ml = nVal;
+          }
+          updated.push(base);
+        }
+        state.editFeedItems = updated;
+      }
+
+      function toggleEditKakaFields() {
+        var ds = $('editBezDurumu').value;
+        var hasPoop = (ds === 'Sadece kaka' || ds === 'Çiş + kaka');
+        $('editKakaFields').classList.toggle('hidden', !hasPoop);
+        $('editKakaMiktari').parentNode.classList.toggle('hidden', !hasPoop);
+      }
+
+      function enterEditMode() {
+        var r = state.activeDetailRecord;
+        if (!r) return;
+
+        $('detailModalTitle').textContent = 'Kaydı Düzenle';
+        $('detailViewSection').classList.add('hidden');
+        $('detailEditSection').classList.remove('hidden');
+
+        var eSel = $('editDolduran');
+        if (r.user && !Array.prototype.some.call(eSel.options, function(o) { return o.value === r.user; })) {
+          var extra = document.createElement('option');
+          extra.value = r.user; extra.textContent = r.user;
+          eSel.appendChild(extra);
+        }
+        eSel.value = r.user;
+        $('editTarih').value = r.isoDate;
+        syncDateText('editTarih');
+        $('editSaat').value = r.isoTime;
+
+        var isBez = (r.type === 'Bez');
+        var isBeslenme = (r.type === 'Beslenme');
+        var isDiger = (r.type === 'Diğer');
+        $('editFieldsBez').classList.toggle('hidden', !isBez);
+        $('editFieldsBeslenme').classList.toggle('hidden', !isBeslenme);
+        $('editFieldsDiger').classList.toggle('hidden', !isDiger);
+
+        if (isBez) {
+          $('editBezDurumu').value = r.diaperStatus || 'Kuru';
+          $('editPisik').value = r.rash || 'Yok';
+          $('editPisikKremi').value = r.cream || 'Hayır';
+          $('editKakaMiktari').value = r.poopAmount || '';
+          $('editKakaKivami').value = r.poopCons || '';
+          $('editBezNot').value = r.note || '';
+
+          var pColor = r.poopColor || '';
+          if (pColor && KNOWN_COLORS.indexOf(pColor) === -1) {
+            $('editKakaRengiSelect').value = 'Diğer';
+            $('editKakaRengiInput').value = pColor.replace(/^Diğer:\s*/, '');
+            $('editBoxKakaRengiDiger').classList.remove('hidden');
+          } else {
+            $('editKakaRengiSelect').value = pColor;
+            $('editKakaRengiInput').value = '';
+            $('editBoxKakaRengiDiger').classList.add('hidden');
+          }
+          toggleEditKakaFields();
+        } else if (isBeslenme) {
+          state.editFeedItems = JSON.parse(JSON.stringify(r.items || []));
+          renderEditFeedItemsList();
+          $('editGaz').value = r.gas || '';
+          $('editGelme').value = r.vomit || '';
+          $('editBeslenmeNot').value = r.note || '';
+        } else {
+          var ev = r.event || 'İlaç/damla verildi';
+          if (KNOWN_EVENTS.indexOf(ev) === -1) {
+            $('editNeOlduSelect').value = 'Diğer';
+            $('editNeOlduInput').value = ev.replace(/^Diğer:\s*/, '');
+            $('editBoxDigerOlay').classList.remove('hidden');
+          } else {
+            $('editNeOlduSelect').value = ev;
+            $('editNeOlduInput').value = '';
+            $('editBoxDigerOlay').classList.add('hidden');
+          }
+          $('editIlac').value = r.med || '';
+          $('editAtes').value = r.temp === '' ? '' : r.temp;
+          $('editDigerNot').value = r.note || '';
+        }
+      }
+
+      function saveEditedRecord() {
+        var r = state.activeDetailRecord;
+        if (!r) return;
+        var saveBtn = $('btnSaveEdit');
+
+        function fail(msg) { alert(msg); saveBtn.disabled = false; saveBtn.textContent = '💾 Kaydet'; }
+
+        var tarih = $('editTarih').value, saat = $('editSaat').value;
+        if (!tarih || !saat) { alert('Tarih ve saat boş olamaz.'); return; }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Kaydediliyor...';
+
+        var p = {
+          id: r.id,
+          kayitTuru: r.type,
+          dolduran: $('editDolduran').value,
+          olayZamani: tarih + 'T' + saat
+        };
+
+        if (r.type === 'Bez') {
+          p.bezDurumu = $('editBezDurumu').value;
+          p.pisik = $('editPisik').value;
+          p.pisikKremi = $('editPisikKremi').value;
+          p.not = $('editBezNot').value.trim();
+          var hasPoop = (p.bezDurumu === 'Sadece kaka' || p.bezDurumu === 'Çiş + kaka');
+          if (hasPoop) {
+            p.kakaMiktari = $('editKakaMiktari').value;
+            p.kakaKivami = $('editKakaKivami').value;
+            var cSel = $('editKakaRengiSelect').value;
+            if (cSel === 'Diğer') {
+              var custCol = $('editKakaRengiInput').value.trim();
+              if (!custCol) return fail('Lütfen kaka rengini elle yazın.');
+              p.kakaRengi = 'Diğer: ' + custCol;
+            } else {
+              p.kakaRengi = cSel;
+            }
+          }
+        } else if (r.type === 'Beslenme') {
+          syncEditFeedItemsFromDOM();
+          if (state.editFeedItems.length === 0) return fail('En az 1 beslenme kalemi bulunmalıdır.');
+          p.feedItems = state.editFeedItems;
+          p.gaz = $('editGaz').value;
+          p.kusma = $('editGelme').value;
+          p.not = $('editBeslenmeNot').value.trim();
+        } else {
+          var oSel = $('editNeOlduSelect').value;
+          if (oSel === 'Diğer') {
+            var custEv = $('editNeOlduInput').value.trim();
+            if (!custEv) return fail('Lütfen olay açıklamasını elle yazın.');
+            p.neOldu = 'Diğer: ' + custEv;
+          } else {
+            p.neOldu = oSel;
+          }
+          p.ilac = $('editIlac').value.trim();
+          p.ates = $('editAtes').value;
+          p.not = $('editDigerNot').value.trim();
+        }
+
+        runApi().withSuccessHandler(function() {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Kaydet';
+          closeDetailModal();
+          showToast('Kayıt güncellendi ✅');
+          loadStatus();
+          loadHistory();
+        }).withFailureHandler(function(err) {
+          fail('Güncelleme hatası: ' + errMsg(err));
+        }).updateRecord(p);
+      }
+
+      function handleDeleteRecord() {
+        var r = state.activeDetailRecord;
+        if (!r) return;
+        if (!confirm(r.time + ' tarihli ' + r.type + ' kaydını kalıcı olarak silmek istediğinize emin misiniz?')) return;
+
+        var delBtn = $('btnDeleteRecord');
+        delBtn.disabled = true;
+        delBtn.textContent = 'Siliniyor...';
+
+        runApi().withSuccessHandler(function() {
+          delBtn.disabled = false;
+          delBtn.textContent = '🗑️ Sil';
+          closeDetailModal();
+          showToast('Kayıt silindi 🗑️');
+          loadStatus();
+          loadHistory();
+        }).withFailureHandler(function(err) {
+          alert('Silme hatası: ' + errMsg(err));
+          delBtn.disabled = false;
+          delBtn.textContent = '🗑️ Sil';
+        }).deleteRecord(r.id);
+      }
+
+      function closeDetailModal() {
+        hideModal('detailModalBackdrop');
+      }
+
+      /* ---------------- SAAT SEÇİCİ ---------------- */
+
+      function updateTriggerButton() {
+        $('btnOpenTimeModal').textContent = pad2(state.selectedHour) + ':' + pad2(state.selectedMinute);
+      }
+
+      function updateFeedItemTimeButton() {
+        $('btnOpenFeedItemTime').textContent = pad2(state.modalItemHour) + ':' + pad2(state.modalItemMinute);
+      }
+
+      function buildWheel(colEl, count, isHour) {
+        colEl.innerHTML = '';
+        var padTop = document.createElement('div');
+        padTop.className = 'wheel-pad';
+        colEl.appendChild(padTop);
+
+        for (var i = 0; i < count; i++) {
+          var div = document.createElement('div');
+          div.className = 'wheel-item';
+          div.textContent = pad2(i);
+          (function(idx) {
+            div.addEventListener('click', function() { colEl.scrollTop = idx * ITEM_H; });
+          })(i);
+          colEl.appendChild(div);
+        }
+
+        var padBot = document.createElement('div');
+        padBot.className = 'wheel-pad';
+        colEl.appendChild(padBot);
+
+        // Çark elle çevrilmeye başlanınca klavyeyi kapat ki kutular çarkı takip etsin
+        colEl.addEventListener('touchstart', function() { blurActive(); }, { passive: true });
+
+        colEl.addEventListener('scroll', function() {
+          var idx = Math.round(colEl.scrollTop / ITEM_H);
+          if (idx < 0) idx = 0;
+          if (idx >= count) idx = count - 1;
+          // Kullanıcı kutuya yazarken (kutu odaktayken) kutunun içeriğini ezme
+          var inp = isHour ? $('manualHour') : $('manualMinute');
+          if (timePad.field) return; // tuş takımıyla yazılıyor: çark değeri ezmesin
+          if (isHour) state.tempHour = idx; else state.tempMinute = idx;
+          inp.value = pad2(idx);
+          highlightWheelItem(colEl, idx);
+        }, { passive: true });
+      }
+
+      function highlightWheelItem(colEl, idx) {
+        var items = colEl.getElementsByClassName('wheel-item');
+        for (var j = 0; j < items.length; j++) items[j].classList.toggle('selected', j === idx);
+      }
+
+      function syncWheelScroll(colEl, val) {
+        colEl.scrollTop = val * ITEM_H;
+        highlightWheelItem(colEl, val);
+      }
+
+      function openTimeModal(targetType) {
+        blurActive();
+        resetTimePad();
+        state.timeModalTarget = targetType || 'main';
+        if (state.timeModalTarget === 'feedItem') {
+          state.tempHour = state.modalItemHour;
+          state.tempMinute = state.modalItemMinute;
+          $('timeModalHeaderTitle').textContent = 'Öğe Başlangıç Saatini Seçin';
+        } else {
+          state.tempHour = state.selectedHour;
+          state.tempMinute = state.selectedMinute;
+          $('timeModalHeaderTitle').textContent = 'Olay Saatini Seçin';
+        }
+        $('manualHour').value = pad2(state.tempHour);
+        $('manualMinute').value = pad2(state.tempMinute);
+        showModal('timeModalBackdrop');
+        setTimeout(function() {
+          syncWheelScroll($('wheelHour'), state.tempHour);
+          syncWheelScroll($('wheelMinute'), state.tempMinute);
+        }, 20);
+      }
+
+      // Mobil klavyeyi güvenilir şekilde kapatır. Sadece blur() bazı Android tarayıcılarında
+      // (özellikle Google'ın çerçevesi içinde) klavyeyi kapatmıyor; kısa süre readonly yapmak kapatıyor.
+      function blurActive() {
+        try {
+          var el = document.activeElement;
+          if (!el || el === document.body) return;
+          var isField = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
+          if (isField) el.setAttribute('readonly', 'readonly');
+          if (el.blur) el.blur();
+          if (isField) setTimeout(function() { el.removeAttribute('readonly'); }, 150);
+        } catch (e) {}
+      }
+
+      /* ---- Pencere açıkken arka sayfayı sabitle ----
+         Mobilde klavye açılınca tarayıcı sayfayı kaydırıyor; klavye kapanınca dokunma noktaları
+         ekrandaki görüntüyle kayık kalabiliyor (alttaki butona basılmış gibi oluyor).
+         Pencere açıkken sayfayı sabitleyip kapanınca aynı konuma geri dönüyoruz. */
+      var openModals = {};
+      var savedScrollY = 0;
+
+      function anyModalOpen() { for (var k in openModals) if (openModals[k]) return true; return false; }
+
+      function showModal(id) {
+        if (!anyModalOpen()) {
+          savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+          var b = document.body.style;
+          b.position = 'fixed'; b.top = (-savedScrollY) + 'px'; b.left = '0'; b.right = '0'; b.width = '100%';
+        }
+        openModals[id] = true;
+        $(id).classList.remove('hidden');
+      }
+
+      function hideModal(id) {
+        if (!openModals[id]) { $(id).classList.add('hidden'); return; }
+        openModals[id] = false;
+        $(id).classList.add('hidden');
+        if (!anyModalOpen()) {
+          var b = document.body.style;
+          b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+          window.scrollTo(0, savedScrollY);
+          resyncViewport();
+        }
+      }
+
+      // Klavye kapandıktan sonra tarayıcının dokunma koordinatlarını görüntüyle yeniden eşitle
+      function resyncViewport() {
+        setTimeout(function() {
+          var y = window.pageYOffset || 0;
+          window.scrollTo(0, y + 1);
+          window.scrollTo(0, y);
+        }, 60);
+      }
+      if (window.visualViewport) {
+        var lastVvH = window.visualViewport.height;
+        window.visualViewport.addEventListener('resize', function() {
+          var h = window.visualViewport.height;
+          if (h > lastVvH + 80) resyncViewport(); // klavye kapandı
+          lastVvH = h;
+        });
+      }
+
+      function isEnter(e) { return e.key === 'Enter' || e.keyCode === 13; }
+
+      function closeTimeModal() { blurActive(); hideModal('timeModalBackdrop'); }
+
+      function confirmTimeModal() {
+        var hv = $('manualHour').value, mv = $('manualMinute').value;
+        // Boş kutu = o alana dokunulup bir şey yazılmamış: önceki değeri kullan
+        var h = hv === '' ? state.tempHour : parseInt(hv, 10);
+        var m = mv === '' ? state.tempMinute : parseInt(mv, 10);
+        if (isNaN(h) || h < 0) h = 0;
+        if (h > 23) h = 23;
+        if (isNaN(m) || m < 0) m = 0;
+        if (m > 59) m = 59;
+
+        if (state.timeModalTarget === 'feedItem') {
+          state.modalItemHour = h;
+          state.modalItemMinute = m;
+          updateFeedItemTimeButton();
+        } else {
+          state.selectedHour = h;
+          state.selectedMinute = m;
+          state.timeTouched = true;
+          updateTriggerButton();
+        }
+        closeTimeModal();
+      }
+
+      /* ---------------- UYGULAMA İÇİ TUŞ TAKIMI ----------------
+         Telefon klavyesi açılınca mobil tarayıcı sayfayı kaydırıyor ve dokunmalar kayıyordu.
+         Bu yüzden rakam girişleri artık kendi tuş takımımızla yapılıyor; sistem klavyesi hiç açılmıyor. */
+
+      function buildNumpad(padEl, okLabel) {
+        var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'];
+        padEl.innerHTML = '';
+        keys.forEach(function(k) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.setAttribute('data-pad', padEl.id);
+          b.setAttribute('data-key', k);
+          if (k === 'del') { b.textContent = '⌫'; b.className = 'pad-del'; }
+          else if (k === 'ok') { b.textContent = okLabel; b.className = 'pad-ok'; }
+          else b.textContent = k;
+          padEl.appendChild(b);
+        });
+      }
+
+      // --- Saat penceresi ---
+      var timePad = { field: null, fresh: true };
+
+      function timeFieldEl(f) { return f === 'h' ? $('manualHour') : $('manualMinute'); }
+
+      function selectTimeField(f) {
+        timePad.field = f;
+        timePad.fresh = true; // ilk basılan rakam eski değerin yerine geçer
+        $('manualHour').classList.toggle('pad-active', f === 'h');
+        $('manualMinute').classList.toggle('pad-active', f === 'm');
+        $('timePad').classList.remove('hidden');
+        $('wheelBox').classList.add('hidden');
+        $('timePadHint').textContent = f === 'h' ? 'Saati yazın (00–23)' : 'Dakikayı yazın (00–59)';
+      }
+
+      function resetTimePad() {
+        timePad.field = null;
+        $('manualHour').classList.remove('pad-active');
+        $('manualMinute').classList.remove('pad-active');
+        $('timePad').classList.add('hidden');
+        $('wheelBox').classList.remove('hidden');
+        $('timePadHint').textContent = 'Yazmak için saate veya dakikaya dokunun';
+      }
+
+      function timePadKey(k) {
+        if (k === 'ok') { confirmTimeModal(); return; }
+        if (!timePad.field) return;
+        var el = timeFieldEl(timePad.field);
+        if (k === 'del') {
+          el.value = timePad.fresh ? '' : String(el.value).slice(0, -1);
+          timePad.fresh = false;
+        } else {
+          if (timePad.fresh) { el.value = k; timePad.fresh = false; }
+          else if (String(el.value).length < 2) el.value = String(el.value) + k;
+        }
+        var v = parseInt(el.value, 10);
+        if (timePad.field === 'h' && !isNaN(v) && v <= 23) state.tempHour = v;
+        if (timePad.field === 'm' && !isNaN(v) && v <= 59) state.tempMinute = v;
+        // Saat 2 hane olunca dakikaya geç
+        if (timePad.field === 'h' && String(el.value).length === 2) selectTimeField('m');
+      }
+
+      // --- Süre / ml alanları ---
+      var valPad = { input: null, padId: null, fresh: true };
+
+      function openValPad(inputId, padId) {
+        closeValPad();
+        valPad.input = inputId; valPad.padId = padId; valPad.fresh = true;
+        $(inputId).classList.add('pad-active');
+        $(padId).classList.remove('hidden');
+      }
+
+      function closeValPad() {
+        if (valPad.input) $(valPad.input).classList.remove('pad-active');
+        if (valPad.padId) $(valPad.padId).classList.add('hidden');
+        valPad.input = null; valPad.padId = null;
+      }
+
+      function valPadKey(k) {
+        if (!valPad.input) return;
+        if (k === 'ok') { closeValPad(); return; }
+        var el = $(valPad.input);
+        if (k === 'del') {
+          el.value = valPad.fresh ? '' : String(el.value).slice(0, -1);
+          valPad.fresh = false;
+        } else {
+          if (valPad.fresh) { el.value = k; valPad.fresh = false; }
+          else if (String(el.value).length < 3) el.value = String(el.value) + k;
+        }
+      }
+
+      buildNumpad($('timePad'), 'Tamam');
+      buildNumpad($('surePad'), '✓');
+      buildNumpad($('mlPad'), '✓');
+
+      /* ---------------- BESLENME KALEMLERİ ---------------- */
+
+      function setModalKind(kind) {
+        state.modalFeedKind = kind;
+        var kindBtns = $('modalFeedKindGroup').getElementsByTagName('button');
+        for (var k = 0; k < kindBtns.length; k++) {
+          kindBtns[k].classList.toggle('active', kindBtns[k].getAttribute('data-feedkind') === kind);
+        }
+        $('modalMemeFields').classList.toggle('hidden', kind !== 'meme');
+        $('modalMlFields').classList.toggle('hidden', kind === 'meme');
+      }
+
+      function setModalSide(side) {
+        state.modalSide = side;
+        var sideBtns = $('modalSideGroup').getElementsByTagName('button');
+        sideBtns[0].classList.toggle('active', side === 'Sol');
+        sideBtns[1].classList.toggle('active', side === 'Sağ');
+      }
+
+      // Var olan bir öğeyi düzenlemek için modalı doldurarak aç
+      function openFeedModalForEdit(idx) {
+        var it = state.feedItems[idx];
+        if (!it) return;
+        closeValPad();
+        state.editingFeedIdx = idx;
+        state.modalItemHour = it.hour;
+        state.modalItemMinute = it.minute;
+        updateFeedItemTimeButton();
+        setModalKind(it.kind);
+        setModalSide(it.kind === 'meme' ? it.meme : (state.nextBreast || 'Sol'));
+        $('modalSureInput').value = it.kind === 'meme' ? it.sure : 15;
+        $('modalMlInput').value = it.kind !== 'meme' ? it.ml : 15;
+        $('feedModalTitle').textContent = (idx + 1) + '. Öğeyi Düzenle';
+        $('btnConfirmFeedModal').textContent = 'Kaydet';
+        showModal('feedModalBackdrop');
+      }
+
+      function openFeedModal() {
+        closeValPad();
+        state.editingFeedIdx = -1;
+        $('feedModalTitle').textContent = 'Beslenme Öğesi Ekle';
+        $('btnConfirmFeedModal').textContent = 'Ekle';
+        var lastMeme = null;
+        for (var i = state.feedItems.length - 1; i >= 0; i--) {
+          if (state.feedItems[i].kind === 'meme') { lastMeme = state.feedItems[i].meme; break; }
+        }
+        if (lastMeme) state.modalSide = (lastMeme === 'Sol') ? 'Sağ' : 'Sol';
+        else state.modalSide = state.nextBreast || 'Sol'; // önceki öğüne göre sıradaki meme
+        state.modalFeedKind = 'meme';
+
+        if (state.feedItems.length === 0) {
+          if (!state.timeTouched) setNow(true);
+          state.modalItemHour = state.selectedHour;
+          state.modalItemMinute = state.selectedMinute;
+        } else {
+          var prev = state.feedItems[state.feedItems.length - 1];
+          var totalMins = prev.hour * 60 + prev.minute + (prev.kind === 'meme' ? prev.sure : 0);
+          state.modalItemHour = Math.floor(totalMins / 60) % 24;
+          state.modalItemMinute = totalMins % 60;
+        }
+        updateFeedItemTimeButton();
+
+        setModalKind('meme');
+        setModalSide(state.modalSide);
+        $('modalSureInput').value = 15;
+        $('modalMlInput').value = 15;
+        showModal('feedModalBackdrop');
+      }
+
+      function closeFeedModal() {
+        blurActive();
+        closeValPad();
+        state.editingFeedIdx = -1;
+        hideModal('feedModalBackdrop');
+      }
+
+      function confirmFeedModal() {
+        var timeStr = pad2(state.modalItemHour) + ':' + pad2(state.modalItemMinute);
+        var item = { hour: state.modalItemHour, minute: state.modalItemMinute, startTime: timeStr };
+
+        if (state.modalFeedKind === 'meme') {
+          var sure = parseInt($('modalSureInput').value, 10);
+          if (isNaN(sure) || sure < 1 || sure > 120) { alert('Süre 1–120 dk arasında olmalı.'); return; }
+          item.kind = 'meme'; item.meme = state.modalSide; item.sure = sure;
+        } else {
+          var ml = parseInt($('modalMlInput').value, 10);
+          if (isNaN(ml) || ml < 1 || ml > 500) { alert('Miktar 1–500 ml arasında olmalı.'); return; }
+          item.kind = state.modalFeedKind; item.ml = ml;
+        }
+        if (state.editingFeedIdx >= 0 && state.editingFeedIdx < state.feedItems.length) {
+          state.feedItems[state.editingFeedIdx] = item;
+        } else {
+          state.feedItems.push(item);
+        }
+        syncMainTimeToFirstItem();
+        renderFeedItems();
+        closeFeedModal();
+      }
+
+      // Beslenme kaydının olay saati = ilk kalemin başlangıç saati
+      function syncMainTimeToFirstItem() {
+        if (!state.feedItems.length) return;
+        state.selectedHour = state.feedItems[0].hour;
+        state.selectedMinute = state.feedItems[0].minute;
+        state.timeTouched = true;
+        updateTriggerButton();
+      }
+
+      function renderFeedItems() {
+        var container = $('feedItemsContainer');
+        container.innerHTML = '';
+        for (var i = 0; i < state.feedItems.length; i++) {
+          var item = state.feedItems[i];
+          if (i > 0) {
+            var mg = state.midGas[i] || '';
+            var gasBox = document.createElement('div');
+            gasBox.className = 'mid-gas-box';
+            gasBox.innerHTML =
+              '<div class="mid-gas-title">💨 Arada gaz çıkardı mı?</div>' +
+              '<div class="chip-grid">' +
+                '<button type="button" class="chip ' + (mg === 'Evet' ? 'active' : '') + '" data-midgas="' + i + '" data-val="Evet">Evet</button>' +
+                '<button type="button" class="chip ' + (mg === 'Hayır' ? 'active' : '') + '" data-midgas="' + i + '" data-val="Hayır">Hayır</button>' +
+              '</div>';
+            container.appendChild(gasBox);
+          }
+
+          var titleText, subText;
+          if (item.kind === 'meme') { titleText = '🕒 ' + item.startTime + ' — 🤱 ' + item.meme + ' Meme'; subText = item.sure + ' dakika'; }
+          else if (item.kind === 'mama') { titleText = '🕒 ' + item.startTime + ' — 🍼 Mama'; subText = item.ml + ' ml'; }
+          else { titleText = '🕒 ' + item.startTime + ' — 🥛 Sağılmış Anne Sütü'; subText = item.ml + ' ml'; }
+
+          var card = document.createElement('div');
+          card.className = 'feed-item-card';
+          card.innerHTML =
+            '<div class="feed-item-info" data-edit-feed="' + i + '"><strong>' + esc(titleText) + '</strong><span>' + esc(subText) + '</span></div>' +
+            '<div class="feed-item-actions">' +
+              '<button type="button" class="edit-item-btn" data-edit-feed="' + i + '">✏️</button>' +
+              '<button type="button" class="remove-item-btn" data-remove-feed="' + i + '">✕</button>' +
+            '</div>';
+          container.appendChild(card);
+        }
+      }
+
+      function removeFeedItem(idx) {
+        // "arada gaz" cevaplarını kalan kalemlerle hizalı tut
+        var gasByItem = state.feedItems.map(function(_, i) { return state.midGas[i] || ''; });
+        state.feedItems.splice(idx, 1);
+        gasByItem.splice(idx, 1);
+        state.midGas = {};
+        for (var i = 1; i < gasByItem.length; i++) if (gasByItem[i]) state.midGas[i] = gasByItem[i];
+        if (state.feedItems.length) syncMainTimeToFirstItem();
+        renderFeedItems();
+      }
+
+      /* ---------------- DURUM ÇUBUĞU ---------------- */
+
+      function setNow(silent) {
+        var now = new Date();
+        $('olayTarih').value = now.getFullYear() + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate());
+        syncDateText('olayTarih');
+        state.selectedHour = now.getHours();
+        state.selectedMinute = now.getMinutes();
+        state.lastAutoTime = Date.now();
+        if (!silent) state.timeTouched = false;
+        updateTriggerButton();
+      }
+
+      function renderStatus(res) {
+        if (!res) return;
+        var feedEl = $('stFeed'), feedSub = $('stFeedSub');
+        if (res.lastFeedTime) {
+          feedEl.textContent = res.lastFeedTime + (res.feedAgo ? ' (' + res.feedAgo + ')' : '');
+          feedSub.textContent = res.lastBreast ? ('Son meme: ' + res.lastBreast + ' → Sıradaki: ' + res.nextBreast) : '';
+        } else {
+          feedEl.textContent = 'Henüz kayıt yok';
+          feedSub.textContent = '';
+        }
+        state.nextBreast = res.nextBreast || '';
+
+        var diaperEl = $('stDiaper');
+        if (res.lastDiaperTime) diaperEl.textContent = res.lastDiaperTime + (res.diaperAgo ? ' (' + res.diaperAgo + ')' : '');
+        else diaperEl.textContent = 'Henüz kayıt yok';
+        $('stDiaperSub').textContent = '';
+
+        var banner = $('creamBanner'), cText = $('stCreamText'), cBadge = $('stCreamBadge');
+        var count = Number(res.diapersSinceCream || 0);
+        if (!res.hasAnyDiaper) {
+          banner.classList.remove('due');
+          cText.textContent = '🧴 Henüz bez kaydı yok';
+          cBadge.textContent = '-';
+        } else if (!res.hasAnyCreamRecord && count < 2) {
+          banner.classList.remove('due');
+          cText.textContent = '🧴 Henüz krem kaydı yok';
+          cBadge.textContent = count + ' bez';
+        } else if (count >= 2) {
+          banner.classList.add('due');
+          cText.textContent = '🧴 Krem zamanı! Son kremden beri ' + count + ' bez geçti';
+          cBadge.textContent = (count + 1) + '. bez (Sürün)';
+        } else {
+          banner.classList.remove('due');
+          cText.textContent = count === 0 ? '🧴 Son bezde pişik kremi sürüldü' : '🧴 Son kremden beri ' + count + ' bez geçti';
+          cBadge.textContent = count + ' / 3 bez';
+        }
+      }
+
+      function statusFailed(err) {
+        $('stFeed').textContent = '-';
+        $('stDiaper').textContent = '-';
+        showError('Durum yüklenemedi: ' + errMsg(err));
+      }
+
+      function loadStatus() {
+        if (!hasServer()) return;
+        runApi().withSuccessHandler(function(res) { showError(''); renderStatus(res); })
+          .withFailureHandler(statusFailed).getLastStatus();
+      }
+
+      function fillPeople(people) {
+        ['dolduran', 'editDolduran'].forEach(function(id) {
+          var sel = $(id);
+          sel.innerHTML = '';
+          people.forEach(function(name) {
+            var o = document.createElement('option');
+            o.value = name;
+            o.textContent = name;
+            sel.appendChild(o);
+          });
+        });
+      }
+
+      function bootstrap() {
+        if (!hasServer()) return;
+        runApi().withSuccessHandler(function(res) {
+          showError('');
+          if (res.email) {
+            $('accountEmail').textContent = '👤 ' + res.email;
+            $('accountLine').classList.remove('hidden');
+          }
+          fillPeople(res.people || []);
+          var saved = null;
+          try { saved = localStorage.getItem('baby_tracker_user'); } catch (e) {}
+          var sel = $('dolduran');
+          var pick = saved || res.defaultName;
+          if (pick) {
+            for (var i = 0; i < sel.options.length; i++) {
+              if (sel.options[i].value === pick) { sel.value = pick; break; }
+            }
+          }
+          renderStatus(res.status);
+        }).withFailureHandler(statusFailed).getBootstrap();
+      }
+
+      /* ---------------- FORM DALLARI ---------------- */
+
+      function handleMainType(val) {
+        state.kayitTuru = val;
+        $('secBez').classList.toggle('hidden', val !== 'Bez');
+        $('secBeslenme').classList.toggle('hidden', val !== 'Beslenme');
+        $('secDiger').classList.toggle('hidden', val !== 'Diğer');
+        $('submitBar').classList.remove('hidden');
+      }
+
+      function handleBezDurumu(val) {
+        state.bezDurumu = val;
+        var hasPoop = (val === 'Sadece kaka' || val === 'Çiş + kaka');
+        $('secKaka').classList.toggle('hidden', !hasPoop);
+      }
+
+      function handleKakaMiktari(val) {
+        state.kakaMiktari = val;
+        var showDetails = (val === 'Orta' || val === 'Çok (taşma)');
+        $('secKakaDetailFields').classList.toggle('hidden', !showDetails);
+      }
+
+      function handleKakaRengi(val) {
+        state.kakaRengi = val;
+        $('boxKakaRengiDiger').classList.toggle('hidden', val !== 'Diğer');
+      }
+
+      function handleDigerChoice(val) {
+        state.neOlduSecimi = val;
+        $('boxIlac').classList.toggle('hidden', val !== 'İlaç/damla verildi');
+        $('boxAtes').classList.toggle('hidden', val !== 'Ateş ölçüldü');
+        $('boxDigerOlayText').classList.toggle('hidden', val !== 'Diğer');
+      }
+
+      function handlePhotoSelected(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          var img = new Image();
+          img.onload = function() {
+            var maxDim = 1200, w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+              else { w = Math.round(w * maxDim / h); h = maxDim; }
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            var resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            state.photoBase64 = resizedDataUrl;
+            state.photoName = file.name || ('bez_' + Date.now() + '.jpg');
+            $('photoPreviewImg').src = resizedDataUrl;
+            $('photoFileName').textContent = state.photoName;
+            $('photoPreviewWrap').classList.remove('hidden');
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function clearPhoto() {
+        state.photoBase64 = '';
+        state.photoName = '';
+        $('bezFotoKamera').value = '';
+        $('bezFotoGaleri').value = '';
+        $('photoPreviewWrap').classList.add('hidden');
+      }
+
+      /* ---------------- OLAYLAR ---------------- */
+
+      document.addEventListener('click', function(e) {
+        try {
+          if (e.target && e.target.id === 'timeModalBackdrop') { closeTimeModal(); return; }
+          if (e.target && e.target.id === 'feedModalBackdrop') { closeFeedModal(); return; }
+          if (e.target && e.target.id === 'detailModalBackdrop') { closeDetailModal(); return; }
+          if (e.target && e.target.getAttribute && e.target.getAttribute('data-lightbox')) { openLightbox(e.target.src); return; }
+          if (e.target && (e.target.id === 'photoLightbox' || e.target.id === 'lightboxImg')) { closeLightbox(); return; }
+
+          if (e.target && e.target.id === 'manualHour') { selectTimeField('h'); return; }
+          if (e.target && e.target.id === 'manualMinute') { selectTimeField('m'); return; }
+          if (e.target && e.target.id === 'modalSureInput') { openValPad('modalSureInput', 'surePad'); return; }
+          if (e.target && e.target.id === 'modalMlInput') { openValPad('modalMlInput', 'mlPad'); return; }
+          var padBtn = findParentWithAttr(e.target, 'data-pad');
+          if (padBtn) {
+            var padId = padBtn.getAttribute('data-pad'), key = padBtn.getAttribute('data-key');
+            if (padId === 'timePad') timePadKey(key); else valPadKey(key);
+            return;
+          }
+
+          var editFeedEl = findParentWithAttr(e.target, 'data-edit-feed');
+          if (editFeedEl) { openFeedModalForEdit(Number(editFeedEl.getAttribute('data-edit-feed'))); return; }
+
+          var histCard = findParentHistCard(e.target);
+          if (histCard) { openRecordDetail(Number(histCard.getAttribute('data-detail-idx'))); return; }
+
+          var target = findParentButton(e.target);
+          if (!target) return;
+
+          if (target.id === 'btnCloseLightbox') { closeLightbox(); return; }
+          if (target.id === 'btnLogout') { if (confirm('Çıkış yapılsın mı?')) logout(); return; }
+          if (target.id === 'tabBtnNew') { switchTab('new'); return; }
+          if (target.id === 'tabBtnHistory') { switchTab('history'); return; }
+          if (target.id === 'btnRefreshHistory') { loadHistory(); return; }
+          if (target.id === 'btnCloseDetailModal') { closeDetailModal(); return; }
+          if (target.id === 'btnEnterEditMode') { enterEditMode(); return; }
+          if (target.id === 'btnCancelEditMode') {
+            $('detailEditSection').classList.add('hidden');
+            $('detailViewSection').classList.remove('hidden');
+            $('detailModalTitle').textContent = state.activeDetailRecord ? state.activeDetailRecord.type + ' Detayı' : 'Kayıt Detayı';
+            return;
+          }
+          if (target.id === 'btnSaveEdit') { saveEditedRecord(); return; }
+          if (target.id === 'btnDeleteRecord') { handleDeleteRecord(); return; }
+
+          if (target.id === 'btnAddEditFeedItem') {
+            syncEditFeedItemsFromDOM();
+            state.editFeedItems.push({ kind: 'meme', meme: 'Sol', sure: 15, startTime: $('editSaat').value || '12:00', araGaz: '' });
+            renderEditFeedItemsList();
+            return;
+          }
+          if (target.hasAttribute('data-ef-del')) {
+            syncEditFeedItemsFromDOM();
+            state.editFeedItems.splice(Number(target.getAttribute('data-ef-del')), 1);
+            renderEditFeedItemsList();
+            return;
+          }
+
+          if (target.id === 'btnToggleSort') {
+            state.sortOrder = (state.sortOrder === 'DESC') ? 'ASC' : 'DESC';
+            target.textContent = (state.sortOrder === 'DESC') ? '⬇ En Yeni' : '⬆ En Eski';
+            state.currentPage = 1;
+            loadHistory();
+            return;
+          }
+          if (target.id === 'btnPrevPage') { if (state.currentPage > 1) { state.currentPage--; loadHistory(); } return; }
+          if (target.id === 'btnNextPage') { if (state.currentPage < (state.totalPages || 1)) { state.currentPage++; loadHistory(); } return; }
+
+          if (target.hasAttribute('data-hrange')) {
+            state.historyRange = target.getAttribute('data-hrange');
+            state.currentPage = 1;
+            setActiveChip($('histRangeGroup'), target);
+            loadHistory();
+            return;
+          }
+          if (target.hasAttribute('data-hfilter')) {
+            state.historyFilter = target.getAttribute('data-hfilter');
+            state.currentPage = 1;
+            setActiveChip($('histFilterGroup'), target);
+            loadHistory();
+            return;
+          }
+
+          if (target.id === 'btnOpenTimeModal') { openTimeModal('main'); return; }
+          if (target.id === 'btnOpenFeedItemTime') { openTimeModal('feedItem'); return; }
+          if (target.id === 'btnCancelTime') { closeTimeModal(); return; }
+          if (target.id === 'btnConfirmTime') { confirmTimeModal(); return; }
+          if (target.id === 'btnOpenFeedModal') { openFeedModal(); return; }
+          if (target.id === 'btnCancelFeedModal') { closeFeedModal(); return; }
+          if (target.id === 'btnConfirmFeedModal') { confirmFeedModal(); return; }
+          if (target.id === 'btnNow') { setNow(); return; }
+          if (target.id === 'submitBtn') { submitForm(); return; }
+          if (target.id === 'btnRemovePhoto') { clearPhoto(); return; }
+
+          if (target.hasAttribute('data-feedkind')) {
+            closeValPad();
+            var fk = target.getAttribute('data-feedkind');
+            state.modalFeedKind = fk;
+            setActiveChip($('modalFeedKindGroup'), target);
+            $('modalMemeFields').classList.toggle('hidden', fk !== 'meme');
+            $('modalMlFields').classList.toggle('hidden', fk === 'meme');
+            return;
+          }
+          if (target.hasAttribute('data-side')) {
+            state.modalSide = target.getAttribute('data-side');
+            setActiveChip($('modalSideGroup'), target);
+            return;
+          }
+          if (target.hasAttribute('data-mstep') || target.hasAttribute('data-msure') ||
+              target.hasAttribute('data-mlstep') || target.hasAttribute('data-mml') ||
+              target.hasAttribute('data-feedkind')) {
+            closeValPad();
+          }
+          if (target.hasAttribute('data-mstep')) {
+            var sEl = $('modalSureInput');
+            sEl.value = Math.max(1, (parseInt(sEl.value, 10) || 15) + Number(target.getAttribute('data-mstep')));
+            return;
+          }
+          if (target.hasAttribute('data-msure')) { $('modalSureInput').value = target.getAttribute('data-msure'); return; }
+          if (target.hasAttribute('data-mlstep')) {
+            var mlEl = $('modalMlInput');
+            mlEl.value = Math.max(1, (parseInt(mlEl.value, 10) || 15) + Number(target.getAttribute('data-mlstep')));
+            return;
+          }
+          if (target.hasAttribute('data-mml')) { $('modalMlInput').value = target.getAttribute('data-mml'); return; }
+
+          if (target.hasAttribute('data-remove-feed')) { removeFeedItem(Number(target.getAttribute('data-remove-feed'))); return; }
+
+          if (target.hasAttribute('data-midgas')) {
+            state.midGas[target.getAttribute('data-midgas')] = target.getAttribute('data-val');
+            renderFeedItems();
+            return;
+          }
+
+          var groupEl = findParentWithAttr(target, 'data-group');
+          if (groupEl) {
+            var key = groupEl.getAttribute('data-group');
+            var val = target.getAttribute('data-val');
+            setActiveChip(groupEl, target);
+            state[key] = val;
+            if (key === 'kayitTuru') handleMainType(val);
+            else if (key === 'bezDurumu') handleBezDurumu(val);
+            else if (key === 'kakaMiktari') handleKakaMiktari(val);
+            else if (key === 'kakaRengi') handleKakaRengi(val);
+            else if (key === 'neOlduSecimi') handleDigerChoice(val);
+            return;
+          }
+        } catch (err) {
+          console.error('Click error:', err);
+        }
+      });
+
+      document.addEventListener('change', function(e) {
+        if (e.target.id === 'dolduran') {
+          try { localStorage.setItem('baby_tracker_user', e.target.value); } catch (err) {}
+        }
+        if (e.target.id === 'olayTarih') { state.timeTouched = true; syncDateText('olayTarih'); }
+        if (e.target.id === 'editTarih') syncDateText('editTarih');
+        if (e.target.id === 'pageSizeSelect') {
+          state.pageSize = Number(e.target.value) || 10;
+          state.currentPage = 1;
+          loadHistory();
+        }
+        if (e.target.id === 'editBezDurumu') toggleEditKakaFields();
+        if (e.target.id === 'editKakaRengiSelect') {
+          $('editBoxKakaRengiDiger').classList.toggle('hidden', e.target.value !== 'Diğer');
+        }
+        if (e.target.id === 'editNeOlduSelect') {
+          $('editBoxDigerOlay').classList.toggle('hidden', e.target.value !== 'Diğer');
+        }
+        if (e.target.id === 'bezFotoKamera' || e.target.id === 'bezFotoGaleri') {
+          if (e.target.files && e.target.files[0]) handlePhotoSelected(e.target.files[0]);
+        }
+      });
+
+      document.addEventListener('input', function(e) {
+        if (e.target.id === 'olayTarih' || e.target.id === 'editTarih') syncDateText(e.target.id);
+      });
+
+      // Masaüstü tarayıcılarda şeffaf alana tıklanınca takvimi aç (mobilde zaten açılır)
+      ['olayTarih', 'editTarih'].forEach(function(id) {
+        $(id).addEventListener('click', function() {
+          try { if (this.showPicker) this.showPicker(); } catch (err) {}
+        });
+      });
+
+      // Uygulama arka plandan geri gelince: saat elle seçilmediyse "şimdi"ye çek, durumu yenile
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') return;
+        if (!state.timeTouched && Date.now() - state.lastAutoTime > 60000) setNow(true);
+        loadStatus();
+      });
+
+      /* ---------------- KAYDET ---------------- */
+
+      var CHIP_DEFAULTS = {
+        kayitTuru: '', bezDurumu: 'Kuru', pisik: 'Yok', pisikKremi: 'Hayır',
+        kakaMiktari: 'Az (leke)', kakaRengi: '', kakaKivami: '',
+        gaz: '', kusma: '', neOlduSecimi: '', ilacSecimi: 'D Vitamini (3 damla)'
+      };
+
+      // Kayıttan sonra formu sayfayı yenilemeden baştaki haline getirir
+      function resetForm() {
+        state.formId = newId();
+        for (var key in CHIP_DEFAULTS) state[key] = CHIP_DEFAULTS[key];
+        state.feedItems = [];
+        state.midGas = {};
+        state.editingFeedIdx = -1;
+
+        var groups = document.querySelectorAll('#viewNewRecord [data-group]');
+        for (var g = 0; g < groups.length; g++) {
+          var def = CHIP_DEFAULTS[groups[g].getAttribute('data-group')] || '';
+          var btns = groups[g].getElementsByTagName('button');
+          for (var b = 0; b < btns.length; b++) {
+            btns[b].classList.toggle('active', def !== '' && btns[b].getAttribute('data-val') === def);
+          }
+        }
+
+        ['secBez', 'secBeslenme', 'secDiger', 'secKaka', 'secKakaDetailFields', 'boxKakaRengiDiger',
+         'boxIlac', 'boxAtes', 'boxDigerOlayText', 'submitBar'].forEach(function(id) {
+          $(id).classList.add('hidden');
+        });
+        ['kakaRengiDigerText', 'bezNot', 'beslenmeNot', 'digerOlayText', 'ates', 'digerNot'].forEach(function(id) {
+          $(id).value = '';
+        });
+
+        renderFeedItems();
+        clearPhoto();
+        setNow();
+
+        var btn = $('submitBtn');
+        btn.disabled = false;
+        btn.textContent = 'KAYDET';
+        switchTab('new');
+        window.scrollTo(0, 0);
+      }
+
+      function submitForm() {
+        if (!state.kayitTuru) { alert('Lütfen Kayıt Türü seçin.'); return; }
+        var isBez = (state.kayitTuru === 'Bez');
+        var isBeslenme = (state.kayitTuru === 'Beslenme');
+        var isDiger = (state.kayitTuru === 'Diğer');
+
+        if (isBez && !state.bezDurumu) { alert('Lütfen Bez Durumu seçin.'); return; }
+        if (isBeslenme && state.feedItems.length === 0) { alert('Lütfen "+ Beslenme Ekle" ile en az bir öğe ekleyin.'); return; }
+        if (isDiger && !state.neOlduSecimi) { alert('Lütfen "Ne Oldu?" başlığından bir seçenek işaretleyin.'); return; }
+
+        // Bez: saat elle seçilmediyse KAYDET anını kullan
+        if (!state.timeTouched && !isBeslenme) setNow(true);
+
+        var hasPoop = isBez && (state.bezDurumu === 'Sadece kaka' || state.bezDurumu === 'Çiş + kaka');
+        var needPoopDetails = hasPoop && (state.kakaMiktari !== 'Az (leke)');
+        var finalKakaRengi = '', finalKakaKivami = '';
+        if (needPoopDetails) {
+          if (state.kakaRengi === 'Diğer') {
+            var customColor = $('kakaRengiDigerText').value.trim();
+            if (!customColor) { alert('Lütfen kaka rengini elle yazın.'); return; }
+            finalKakaRengi = 'Diğer: ' + customColor;
+          } else {
+            finalKakaRengi = state.kakaRengi;
+          }
+          finalKakaKivami = state.kakaKivami;
+        }
+
+        var finalNeOldu = '';
+        if (isDiger) {
+          if (state.neOlduSecimi === 'Diğer') {
+            var customEvent = $('digerOlayText').value.trim();
+            if (!customEvent) { alert('Lütfen ne olduğunu elle yazın.'); return; }
+            finalNeOldu = 'Diğer: ' + customEvent;
+          } else {
+            finalNeOldu = state.neOlduSecimi;
+          }
+        }
+
+        var feedItems = [];
+        if (isBeslenme) {
+          for (var i = 0; i < state.feedItems.length; i++) {
+            var it = state.feedItems[i];
+            feedItems.push({
+              kind: it.kind, meme: it.meme, sure: it.sure, ml: it.ml,
+              startTime: it.startTime,
+              araGaz: i > 0 ? (state.midGas[i] || '') : ''
+            });
+          }
+        }
+
+        var saat = pad2(state.selectedHour) + ':' + pad2(state.selectedMinute);
+        if (isBeslenme) saat = state.feedItems[0].startTime;
+
+        var notText = isBez ? $('bezNot').value : (isBeslenme ? $('beslenmeNot').value : $('digerNot').value);
+
+        var payload = {
+          id: state.formId,
+          dolduran: $('dolduran').value,
+          olayZamani: $('olayTarih').value + 'T' + saat,
+          kayitTuru: state.kayitTuru,
+          bezDurumu: isBez ? state.bezDurumu : '',
+          pisik: isBez ? state.pisik : '',
+          pisikKremi: isBez ? state.pisikKremi : '',
+          kakaMiktari: hasPoop ? state.kakaMiktari : '',
+          kakaRengi: finalKakaRengi,
+          kakaKivami: finalKakaKivami,
+          feedItems: feedItems,
+          gaz: isBeslenme ? state.gaz : '',
+          kusma: isBeslenme ? state.kusma : '',
+          neOldu: finalNeOldu,
+          ilac: (isDiger && state.neOlduSecimi === 'İlaç/damla verildi') ? state.ilacSecimi : '',
+          ates: (isDiger && state.neOlduSecimi === 'Ateş ölçüldü') ? $('ates').value : '',
+          not: notText.trim(),
+          photoBase64: hasPoop ? state.photoBase64 : ''
+        };
+
+        var btn = $('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'KAYDEDİLİYOR...';
+
+        runApi().withSuccessHandler(function() {
+          showToast('Kaydedildi 👶 Teşekkürler!');
+          resetForm();
+          loadStatus();
+        }).withFailureHandler(function(err) {
+          // formId aynı kalır: tekrar denenirse çift kayıt oluşmaz
+          alert('Hata oluştu: ' + errMsg(err));
+          btn.disabled = false;
+          btn.textContent = 'KAYDET';
+        }).saveRecord(payload);
+      }
+
+      /* ---------------- BAŞLAT ---------------- */
+
+      buildWheel($('wheelHour'), 24, true);
+      buildWheel($('wheelMinute'), 60, false);
+      setNow();
+      if (!CFG.API_URL || !CFG.CLIENT_ID) {
+        showError('Kurulum eksik: config.js içinde API_URL ve CLIENT_ID doldurulmalı.');
+      } else if (getSession()) {
+        bootstrap();
+      } else {
+        showLogin('');
+      }
+
+      // Ana ekrana eklenebilir uygulama (çevrimdışı kabuk)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('sw.js').catch(function() {});
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

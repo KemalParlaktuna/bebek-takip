@@ -164,6 +164,15 @@
     .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
     .report-list .alarm { color: var(--danger); font-weight: 700; }
     .report-muted { color: var(--muted); font-size: 14px; }
+    .notify-status { font-size: 15px; font-weight: 600; }
+    .notify-status.on { color: #0f7a52; }
+    .notify-hint { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fff7e6; color: #6b4a00; font-size: 14px; line-height: 1.45; }
+    .notify-row { display: flex; gap: 8px; margin-top: 12px; }
+    .notify-btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1.5px solid var(--primary); background: #eff6ff; color: #1e3a8a; font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer; }
+    .notify-btn.ghost { border-color: var(--border); background: #fff; color: var(--muted); }
+    .notify-label { font-weight: 700; font-size: 15px; margin-top: 16px; }
+    .notify-desc { color: var(--muted); font-size: 13px; margin: 2px 0 8px; line-height: 1.4; }
+    [data-ngroup].saving { opacity: .6; pointer-events: none; }
     .timeline-svg { display: block; min-width: 712px; }
     .timeline-svg .tl-axis { font-size: 11px; fill: #52514e; font-family: inherit; }
     .timeline-svg .tl-day { font-size: 13px; font-weight: 700; fill: #0b0b0b; font-family: inherit; }
@@ -1080,6 +1089,7 @@
     <button type="button" class="nav-item active" data-nav="new"><span>➕</span> Yeni Kayıt</button>
     <button type="button" class="nav-item" data-nav="history"><span>📋</span> Geçmiş Kayıtlar</button>
     <button type="button" class="nav-item" data-nav="report"><span>🩺</span> Doktor Raporu</button>
+    <button type="button" class="nav-item" data-nav="notify"><span>🔔</span> Bildirimler</button>
     <div class="nav-footer">
       <div id="accountLine" class="account-line hidden"><span id="accountEmail"></span><button type="button" id="btnLogout">Çıkış</button></div>
     </div>
@@ -1367,6 +1377,62 @@
       <button type="button" class="submit-btn" id="btnLoadReport" style="margin-top:12px;">Raporu Getir</button>
     </div>
     <div id="reportBody"></div>
+  </div>
+
+  <!-- SEKME 4: BİLDİRİMLER -->
+  <div id="viewNotify" class="hidden">
+    <div class="card">
+      <label class="sec-title">📱 Bu Cihaz</label>
+      <div class="notify-status" id="notifyDeviceStatus">Kontrol ediliyor...</div>
+      <div class="notify-hint hidden" id="notifyHint"></div>
+      <button type="button" class="submit-btn" id="btnPushEnable" style="margin-top:12px;">🔔 Bu cihazda bildirimleri aç</button>
+      <div class="notify-row hidden" id="notifyOnButtons">
+        <button type="button" class="notify-btn" id="btnPushTest">Deneme bildirimi gönder</button>
+        <button type="button" class="notify-btn ghost" id="btnPushDisable">Bu cihazda kapat</button>
+      </div>
+      <div class="report-muted" id="notifyDevices" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <label class="sec-title">⚙️ Benim Ayarlarım</label>
+      <div class="report-muted" style="margin-bottom:12px;">Bu ayarlar sadece size aittir ve bildirimleri açtığınız tüm cihazlarınızda geçerlidir. Seçince otomatik kaydedilir.</div>
+
+      <div class="notify-label">🍼 Beslenme hatırlatması</div>
+      <div class="notify-desc">Planlanan beslenme saatinden ne kadar önce haber verilsin? (Gece de gelir.)</div>
+      <div class="chip-grid cols-3" data-ngroup="feed">
+        <button type="button" class="chip" data-nval="0">Kapalı</button>
+        <button type="button" class="chip" data-nval="5">5 dk önce</button>
+        <button type="button" class="chip" data-nval="10">10 dk önce</button>
+        <button type="button" class="chip" data-nval="15">15 dk önce</button>
+        <button type="button" class="chip" data-nval="20">20 dk önce</button>
+        <button type="button" class="chip" data-nval="30">30 dk önce</button>
+      </div>
+
+      <div class="notify-label">🧷 Bez değişmedi uyarısı</div>
+      <div class="notify-desc">Son bez değişiminden bu kadar süre geçerse haber verilsin.</div>
+      <div class="chip-grid cols-3" data-ngroup="diaper">
+        <button type="button" class="chip" data-nval="0">Kapalı</button>
+        <button type="button" class="chip" data-nval="120">2 saat</button>
+        <button type="button" class="chip" data-nval="150">2,5 saat</button>
+        <button type="button" class="chip" data-nval="180">3 saat</button>
+        <button type="button" class="chip" data-nval="240">4 saat</button>
+        <button type="button" class="chip" data-nval="300">5 saat</button>
+      </div>
+
+      <div class="notify-label">🧴 Pişik kremi hatırlatması</div>
+      <div class="notify-desc">Son kremden sonra 2 bez krem sürülmeden değiştiyse "sıradaki bezde krem sürün" bildirimi gelir. Bez uyarısına da "bu değişimde krem sürün" notu eklenir.</div>
+      <div class="chip-grid" data-ngroup="cream">
+        <button type="button" class="chip" data-nval="1">Açık</button>
+        <button type="button" class="chip" data-nval="0">Kapalı</button>
+      </div>
+
+      <div class="notify-label">🌙 Gece (23:00–07:00) bez ve krem bildirimleri</div>
+      <div class="notify-desc">Beslenme hatırlatmaları gece de gelir. Bez ve krem bildirimleri gece susturulursa sabah 07:00'den sonra gelir.</div>
+      <div class="chip-grid" data-ngroup="night">
+        <button type="button" class="chip" data-nval="0">Gece susturulsun</button>
+        <button type="button" class="chip" data-nval="1">Gece de gelsin</button>
+      </div>
+    </div>
   </div>
 
   <!-- KAYIT DETAY VE DÜZENLEME MODALI -->
@@ -1810,7 +1876,8 @@
           withSuccessHandler: function(f) { ok = f; return r; },
           withFailureHandler: function(f) { fail = f; return r; }
         };
-        ['getBootstrap', 'getLastStatus', 'getRecordsPage', 'saveRecord', 'updateRecord', 'deleteRecord', 'getPhoto', 'getReport']
+        ['getBootstrap', 'getLastStatus', 'getRecordsPage', 'saveRecord', 'updateRecord', 'deleteRecord', 'getPhoto', 'getReport',
+         'getNotify', 'saveNotify', 'pushRegister', 'pushUnregister', 'pushTest']
           .forEach(function(name) {
             r[name] = function() {
               var args = Array.prototype.slice.call(arguments);
@@ -1867,6 +1934,7 @@
       }
 
       function logout() {
+        try { pushOffForLogout(); } catch (e) {}
         var s = getSession();
         setSession('');
         try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) {}
@@ -1916,7 +1984,8 @@
       var VIEWS = {
         'new':     { el: 'viewNewRecord', title: 'Yeni Kayıt',        status: true },
         'history': { el: 'viewHistory',   title: 'Geçmiş Kayıtlar',   status: false },
-        'report':  { el: 'viewReport',    title: 'Doktor Raporu',     status: false }
+        'report':  { el: 'viewReport',    title: 'Doktor Raporu',     status: false },
+        'notify':  { el: 'viewNotify',    title: 'Bildirimler',       status: false }
       };
 
       var currentTab = 'new';
@@ -1935,6 +2004,7 @@
         window.scrollTo(0, 0);
         if (name === 'history') { state.currentPage = 1; loadHistory(); }
         if (name === 'report') initReport();
+        if (name === 'notify') initNotify();
       }
 
       /* ---------------- SOL PANEL ---------------- */
@@ -3267,6 +3337,7 @@
             }
           }
           renderStatus(res.status);
+          setTimeout(refreshPushToken, 3000);
         }).withFailureHandler(statusFailed).getBootstrap();
       }
 
@@ -3420,6 +3491,10 @@
           if (target.id === 'btnPlanSave') { finishPlan(true); return; }
           if (target.id === 'btnPlanSkip') { finishPlan(false); return; }
           if (target.id === 'btnPlanBack') { cancelPlan(); return; }
+          if (target.id === 'btnPushEnable') { pushEnable(); return; }
+          if (target.id === 'btnPushDisable') { pushDisable(); return; }
+          if (target.id === 'btnPushTest') { pushTest(); return; }
+          if (target.hasAttribute('data-nval')) { saveNotifySetting(target); return; }
           if (target.hasAttribute('data-nav')) { switchTab(target.getAttribute('data-nav')); return; }
           if (target.id === 'btnLoadReport') { loadReport(); return; }
           if (target.id === 'btnPrintReport') { window.print(); return; }
@@ -3930,6 +4005,194 @@
           btn.disabled = false;
           btn.textContent = 'KAYDET';
         }).saveRecord(payload);
+      }
+
+      /* ---------------- BİLDİRİMLER ---------------- */
+
+      var PUSH_TOKEN_KEY = 'bt_push_token', PUSH_CHECK_KEY = 'bt_push_checked';
+      var notifyData = null;
+
+      function isIos() { return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+      function isStandalone() { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+      function storedPushToken() { try { return localStorage.getItem(PUSH_TOKEN_KEY) || ''; } catch (e) { return ''; } }
+      function setStoredPushToken(t) { try { if (t) localStorage.setItem(PUSH_TOKEN_KEY, t); else localStorage.removeItem(PUSH_TOKEN_KEY); } catch (e) {} }
+
+      function deviceLabel() {
+        var ua = navigator.userAgent, dev = 'Bilgisayar', br = 'Tarayıcı';
+        if (/iPhone/.test(ua)) dev = 'iPhone'; else if (/iPad/.test(ua) || isIos()) dev = 'iPad';
+        else if (/Android/.test(ua)) dev = (/SM-|Samsung/i.test(ua) ? 'Samsung' : 'Android');
+        if (/SamsungBrowser/.test(ua)) br = 'Samsung Internet';
+        else if (/Firefox|FxiOS/.test(ua)) br = 'Firefox';
+        else if (/Edg\//.test(ua)) br = 'Edge';
+        else if (/Chrome|CriOS/.test(ua)) br = 'Chrome';
+        else if (/Safari/.test(ua)) br = 'Safari';
+        return dev + ' · ' + br + (isStandalone() ? ' (uygulama)' : '');
+      }
+
+      var fbPromise = null;
+      function firebaseMessaging() {
+        if (!fbPromise) {
+          fbPromise = import('./firebase-push.js').then(function(fb) {
+            return fb.isSupported().then(function(ok) {
+              if (!ok) throw new Error('UNSUPPORTED');
+              var app = fb.initializeApp(CFG.FIREBASE);
+              return { fb: fb, messaging: fb.getMessaging(app) };
+            });
+          });
+          fbPromise.catch(function() { fbPromise = null; });
+        }
+        return fbPromise;
+      }
+
+      function fetchPushToken() {
+        return Promise.all([firebaseMessaging(), navigator.serviceWorker.ready]).then(function(r) {
+          return r[0].fb.getToken(r[0].messaging, { vapidKey: CFG.FIREBASE_VAPID_KEY, serviceWorkerRegistration: r[1] });
+        });
+      }
+
+      // Bu cihaz neden bildirim alamaz? (boşsa alabilir)
+      function pushBlocker() {
+        if (!CFG.FIREBASE || !CFG.FIREBASE_VAPID_KEY) return 'Bildirim kurulumu henüz tamamlanmadı (Firebase ayarları eksik).';
+        if (notifyData && !notifyData.serverReady) return 'Sunucu tarafında bildirim kurulumu henüz tamamlanmadı.';
+        if (isIos() && !isStandalone()) return 'iPhone/iPad\'de bildirim için uygulamayı ana ekrana eklemeniz gerekir: Safari\'de Paylaş ⬆️ → "Ana Ekrana Ekle". Sonra uygulamayı ana ekrandaki simgeden açıp buradan bildirimleri açın.';
+        if (!('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window)) return 'Bu tarayıcı bildirimleri desteklemiyor. Android\'de Chrome, iPhone\'da ana ekrana eklenmiş uygulama kullanın.';
+        if (Notification.permission === 'denied') return 'Bu cihazda bildirim izni reddedilmiş. Telefon/tarayıcı ayarlarından bu site için bildirimlere izin verip tekrar deneyin.';
+        return '';
+      }
+
+      function renderNotify() {
+        var on = !!storedPushToken() && window.Notification && Notification.permission === 'granted';
+        var block = pushBlocker();
+        $('notifyDeviceStatus').textContent = on ? '✅ Bu cihazda bildirimler açık' : '🔕 Bu cihazda bildirimler kapalı';
+        $('notifyDeviceStatus').classList.toggle('on', on);
+        $('notifyHint').textContent = block;
+        $('notifyHint').classList.toggle('hidden', !block || on);
+        $('btnPushEnable').classList.toggle('hidden', on);
+        $('btnPushEnable').disabled = !!block && !(window.Notification && Notification.permission === 'denied');
+        $('notifyOnButtons').classList.toggle('hidden', !on);
+        if (notifyData) {
+          var st = notifyData.settings;
+          setNotifyChip('feed', String(st.feed));
+          setNotifyChip('diaper', String(st.diaper));
+          setNotifyChip('cream', st.cream ? '1' : '0');
+          setNotifyChip('night', st.night ? '1' : '0');
+          var devs = notifyData.devices || [];
+          $('notifyDevices').textContent = devs.length
+            ? 'Bildirim alan cihazlarınız: ' + devs.map(function(d) { return d.device; }).join(', ')
+            : 'Henüz bildirim alan cihazınız yok.';
+        }
+      }
+
+      function setNotifyChip(group, val) {
+        var g = document.querySelector('[data-ngroup="' + group + '"]');
+        var btns = g.getElementsByTagName('button');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-nval') === val);
+      }
+
+      function initNotify() {
+        renderNotify();
+        runApi().withSuccessHandler(function(d) { notifyData = d; renderNotify(); })
+          .withFailureHandler(function(err) { $('notifyDevices').textContent = 'Ayarlar yüklenemedi: ' + errMsg(err); })
+          .getNotify();
+      }
+
+      function saveNotifySetting(btn) {
+        var g = findParentWithAttr(btn, 'data-ngroup'), key = g.getAttribute('data-ngroup'), raw = btn.getAttribute('data-nval');
+        var val = (key === 'cream' || key === 'night') ? raw === '1' : Number(raw);
+        var prev = notifyData ? notifyData.settings[key] : null;
+        setNotifyChip(key, raw);
+        g.classList.add('saving');
+        var s = {}; s[key] = val;
+        runApi().withSuccessHandler(function() {
+          g.classList.remove('saving');
+          if (notifyData) notifyData.settings[key] = val;
+          showToast('Kaydedildi');
+        }).withFailureHandler(function(err) {
+          g.classList.remove('saving');
+          if (prev !== null) setNotifyChip(key, typeof prev === 'boolean' ? (prev ? '1' : '0') : String(prev));
+          alert('Kaydedilemedi: ' + errMsg(err));
+        }).saveNotify(s);
+      }
+
+      function registerToken(token) {
+        return new Promise(function(resolve, reject) {
+          runApi().withSuccessHandler(resolve).withFailureHandler(reject).pushRegister(token, deviceLabel());
+        });
+      }
+
+      function pushEnable() {
+        var block = pushBlocker();
+        if (block && Notification.permission !== 'denied') { alert(block); return; }
+        var btn = $('btnPushEnable');
+        btn.disabled = true; btn.textContent = 'Açılıyor...';
+        var done = function() { btn.disabled = false; btn.textContent = '🔔 Bu cihazda bildirimleri aç'; };
+        // İzin isteği doğrudan dokunmayla tetiklenmeli (iPhone şartı)
+        Notification.requestPermission().then(function(p) {
+          if (p !== 'granted') throw new Error('Bildirim izni verilmedi. Telefon/tarayıcı ayarlarından bu site için bildirimlere izin verin.');
+          return fetchPushToken();
+        }).then(function(token) {
+          if (!token) throw new Error('Bildirim anahtarı alınamadı.');
+          return registerToken(token).then(function() { setStoredPushToken(token); });
+        }).then(function() {
+          try { localStorage.setItem(PUSH_CHECK_KEY, String(Date.now())); } catch (e) {}
+          done();
+          showToast('Bildirimler açıldı 🔔');
+          initNotify();
+        }).catch(function(err) {
+          done();
+          renderNotify();
+          var m = err && err.message === 'UNSUPPORTED' ? 'Bu tarayıcı bildirimleri desteklemiyor.' : errMsg(err);
+          alert('Bildirimler açılamadı: ' + m);
+        });
+      }
+
+      function pushDisable() {
+        var token = storedPushToken();
+        setStoredPushToken('');
+        firebaseMessaging().then(function(f) { return f.fb.deleteToken(f.messaging); }).catch(function() {});
+        if (!token) { renderNotify(); return; }
+        runApi().withSuccessHandler(function() { showToast('Bu cihazda bildirimler kapatıldı'); initNotify(); })
+          .withFailureHandler(function() { initNotify(); })
+          .pushUnregister(token);
+      }
+
+      function pushOffForLogout() {
+        var token = storedPushToken();
+        if (!token) return;
+        setStoredPushToken('');
+        firebaseMessaging().then(function(f) { return f.fb.deleteToken(f.messaging); }).catch(function() {});
+        if (CFG.API_URL && getSession()) postApi({ action: 'pushUnregister', session: getSession(), args: [token] }).catch(function() {});
+      }
+
+      function pushTest() {
+        var btn = $('btnPushTest');
+        btn.disabled = true;
+        runApi().withSuccessHandler(function(r) {
+          btn.disabled = false;
+          showToast(r.sent ? 'Deneme bildirimi gönderildi (' + r.sent + ' cihaz)' : 'Gönderilemedi');
+        }).withFailureHandler(function(err) {
+          btn.disabled = false;
+          alert('Deneme bildirimi gönderilemedi: ' + errMsg(err));
+        }).pushTest();
+      }
+
+      // Açılışta (günde bir) anahtarı yenile: Firebase anahtarı değiştirirse sunucuya bildir
+      function refreshPushToken() {
+        var old = storedPushToken();
+        if (!old || pushBlocker() || !window.Notification || Notification.permission !== 'granted') return;
+        var last = 0;
+        try { last = Number(localStorage.getItem(PUSH_CHECK_KEY) || 0); } catch (e) {}
+        if (Date.now() - last < 86400000) return;
+        fetchPushToken().then(function(token) {
+          if (!token) return;
+          return registerToken(token).then(function() {
+            if (token !== old) {
+              setStoredPushToken(token);
+              runApi().pushUnregister(old);
+            }
+            try { localStorage.setItem(PUSH_CHECK_KEY, String(Date.now())); } catch (e) {}
+          });
+        }).catch(function() {});
       }
 
       /* ---------------- BAŞLAT ---------------- */

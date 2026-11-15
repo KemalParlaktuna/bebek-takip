@@ -2031,7 +2031,7 @@
           });
         });
         out.forEach(function(e) {
-          if (e.t === 'meme') { e.dur = e.end - e.m; e.label = 'Emzirme: ' + e.parts.join(' + ') + ' (toplam ' + durText(e.dur) + ')'; }
+          if (e.t === 'meme') { e.dur = e.end - e.m; e.label = 'Emzirme (bitiş ' + hhmm(e.end) + '): ' + e.parts.join(' + '); }
         });
         return out;
       }

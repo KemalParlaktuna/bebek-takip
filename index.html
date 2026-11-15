@@ -213,6 +213,45 @@
     }
     .status-item strong { display: block; font-size: 14px; color: #065f46; }
     .status-sub { display: block; font-size: 12px; color: #047857; margin-top: 2px; font-weight: 600; }
+    .next-feed-banner {
+      grid-column: 1 / -1;
+      padding-top: 8px;
+      border-top: 1px dashed #6ee7b7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      color: #065f46;
+      font-weight: 600;
+    }
+    .next-feed-pill {
+      background: #d1fae5;
+      color: #065f46;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .next-feed-banner.soon .next-feed-pill { background: #fef3c7; color: #92400e; }
+    .next-feed-banner.late { color: #991b1b; }
+    .next-feed-banner.late .next-feed-pill { background: #fee2e2; color: #991b1b; }
+    .plan-sub { font-size: 14px; color: #334155; margin-bottom: 14px; line-height: 1.4; }
+    .plan-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-bottom: 6px; }
+    .plan-step {
+      height: 56px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .plan-center { text-align: center; }
+    .plan-interval { font-size: 24px; font-weight: 800; color: var(--primary); }
+    .plan-at { font-size: 15px; font-weight: 700; color: #334155; margin-top: 2px; }
     .cream-banner {
       grid-column: 1 / -1;
       padding-top: 8px;
@@ -1058,6 +1097,10 @@
       <strong id="stDiaper">Yükleniyor...</strong>
       <span class="status-sub" id="stDiaperSub"></span>
     </div>
+    <div class="next-feed-banner hidden" id="nextFeedBanner">
+      <span id="stNextFeedText">🍼 Sonraki beslenme</span>
+      <span class="next-feed-pill" id="stNextFeedBadge">-</span>
+    </div>
     <div class="cream-banner" id="creamBanner">
       <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
       <span class="cream-pill" id="stCreamBadge">-</span>
@@ -1527,6 +1570,26 @@
   </div>
 
   <!-- BESLENME EKLE POPUP MODALI -->
+  <!-- SONRAKİ BESLENME PLANI -->
+  <div id="planModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title">Bir sonraki beslenmeyi planladınız mı?</div>
+      <div class="plan-sub">Bu beslenmenin başlangıcı: <b id="planBaseTime">--:--</b>. Sonraki beslenme bu saatten itibaren:</div>
+      <div class="plan-row">
+        <button type="button" class="plan-step" data-planstep="-15">−15 dk</button>
+        <div class="plan-center">
+          <div class="plan-interval" id="planIntervalText">2 sa 30 dk</div>
+          <div class="plan-at" id="planAtText">→ saat --:--</div>
+        </div>
+        <button type="button" class="plan-step" data-planstep="15">+15 dk</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel" id="btnPlanSkip">Planlamadan Kaydet</button>
+        <button type="button" class="modal-btn confirm" id="btnPlanSave">Planla ve Kaydet</button>
+      </div>
+    </div>
+  </div>
+
   <div id="feedModalBackdrop" class="modal-backdrop hidden">
     <div class="modal-box">
       <div class="modal-title" id="feedModalTitle">Beslenme Öğesi Ekle</div>
@@ -2123,6 +2186,7 @@
           if (r.totalMin > 0) rows.push(['Toplam Emzirme', r.totalMin + ' dk (Sol ' + r.leftMin + ' / Sağ ' + r.rightMin + ')']);
           if (r.mamaMl > 0) rows.push(['Toplam Mama', r.mamaMl + ' ml']);
           if (r.sutMl > 0) rows.push(['Toplam Sağılmış Süt', r.sutMl + ' ml']);
+          if (r.nextFeedTime) rows.push(['Planlanan Sonraki Beslenme', r.nextFeedTime]);
           if (r.gas) rows.push(['Gaz Çıkardı mı?', r.gas]);
           if (r.vomit) rows.push(['Gelme', r.vomit]);
         } else if (r.type === 'Bez') {
@@ -2932,6 +2996,8 @@
           feedSub.textContent = '';
         }
         state.nextBreast = res.nextBreast || '';
+        nextFeedTs = Number(res.nextFeedTs || 0);
+        renderNextFeed();
         state.breastTail = { side: res.tailSide || res.lastBreast || '', minutes: Number(res.tailMinutes || 0) };
         if (Number(res.minBreastMin) > 0) state.minBreast = Number(res.minBreastMin);
 
@@ -3149,6 +3215,13 @@
           if (target.id === 'btnCloseLightbox') { closeLightbox(); return; }
           if (target.id === 'btnLogout') { if (confirm('Çıkış yapılsın mı?')) logout(); return; }
           if (target.id === 'btnMenu') { openNav(); return; }
+          if (target.hasAttribute('data-planstep')) {
+            plan.minutes = Math.min(12 * 60, Math.max(15, plan.minutes + Number(target.getAttribute('data-planstep'))));
+            renderPlan();
+            return;
+          }
+          if (target.id === 'btnPlanSave') { finishPlan(true); return; }
+          if (target.id === 'btnPlanSkip') { finishPlan(false); return; }
           if (target.hasAttribute('data-nav')) { switchTab(target.getAttribute('data-nav')); return; }
           if (target.id === 'btnLoadReport') { loadReport(); return; }
           if (target.id === 'btnPrintReport') { window.print(); return; }
@@ -3370,6 +3443,70 @@
         window.scrollTo(0, 0);
       }
 
+      /* ---------------- SONRAKİ BESLENME PLANI ---------------- */
+
+      var DEFAULT_PLAN_MIN = 150; // 2,5 saat
+      var plan = { base: null, minutes: DEFAULT_PLAN_MIN, payload: null };
+
+      function durText(min) {
+        var h = Math.floor(min / 60), m = min % 60;
+        if (h && m) return h + ' sa ' + m + ' dk';
+        if (h) return h + ' sa';
+        return m + ' dk';
+      }
+
+      // "13:00", ertesi güne düşüyorsa "yarın 01:00"
+      function clockText(d) {
+        var t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        var day = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        if (day === today + 86400000) return 'yarın ' + t;
+        if (day !== today) return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + ' ' + t;
+        return t;
+      }
+
+      function renderPlan() {
+        $('planIntervalText').textContent = durText(plan.minutes);
+        $('planAtText').textContent = '→ saat ' + clockText(new Date(plan.base.getTime() + plan.minutes * 60000));
+      }
+
+      function openPlanModal(payload) {
+        var p = payload.olayZamani.split('T'), dp = p[0].split('-'), tp = p[1].split(':');
+        plan.base = new Date(Number(dp[0]), Number(dp[1]) - 1, Number(dp[2]), Number(tp[0]), Number(tp[1]));
+        plan.minutes = DEFAULT_PLAN_MIN;
+        plan.payload = payload;
+        $('planBaseTime').textContent = clockText(plan.base);
+        renderPlan();
+        showModal('planModalBackdrop');
+      }
+
+      function finishPlan(withPlan) {
+        var payload = plan.payload;
+        if (!payload) return;
+        plan.payload = null;
+        if (withPlan) payload.nextFeedMin = plan.minutes;
+        hideModal('planModalBackdrop');
+        sendRecord(payload);
+      }
+
+      // Bilgi kartındaki "sonraki beslenmeye kalan" satırı; her dakika yenilenir
+      var nextFeedTs = 0;
+
+      function renderNextFeed() {
+        var banner = $('nextFeedBanner');
+        if (!nextFeedTs) { banner.classList.add('hidden'); return; }
+        var diffMin = Math.round((nextFeedTs - Date.now()) / 60000);
+        banner.classList.remove('hidden');
+        banner.classList.toggle('soon', diffMin >= 0 && diffMin <= 15);
+        banner.classList.toggle('late', diffMin < 0);
+        $('stNextFeedText').textContent = '🍼 Sonraki beslenme: ' + clockText(new Date(nextFeedTs));
+        $('stNextFeedBadge').textContent = diffMin >= 0
+          ? (diffMin === 0 ? 'şimdi' : durText(diffMin) + ' kaldı')
+          : durText(-diffMin) + ' geçti';
+      }
+      setInterval(renderNextFeed, 30000);
+
       function submitForm() {
         if (!state.kayitTuru) { alert('Lütfen Kayıt Türü seçin.'); return; }
         var isBez = (state.kayitTuru === 'Bez');
@@ -3455,6 +3592,11 @@
           photoBase64: hasPoop ? state.photoBase64 : ''
         };
 
+        if (isBeslenme) { openPlanModal(payload); return; }
+        sendRecord(payload);
+      }
+
+      function sendRecord(payload) {
         var btn = $('submitBtn');
         btn.disabled = true;
         btn.textContent = 'KAYDEDİLİYOR...';

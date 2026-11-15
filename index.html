@@ -164,6 +164,11 @@
     .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
     .report-list .alarm { color: var(--danger); font-weight: 700; }
     .report-muted { color: var(--muted); font-size: 14px; }
+    .outbox-bar { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 14px; font-weight: 600; }
+    .outbox-bar.offline { background: #fff7e6; color: #6b4a00; }
+    .outbox-bar .ob-err { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; color: #b91c1c; font-weight: 500; }
+    .outbox-bar .ob-err:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .outbox-bar button { margin: 6px 6px 0 0; padding: 6px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
     .notify-status { font-size: 15px; font-weight: 600; }
     .notify-status.on { color: #0f7a52; }
     .notify-hint { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fff7e6; color: #6b4a00; font-size: 14px; line-height: 1.45; }
@@ -1112,6 +1117,7 @@
   <div id="errBanner" class="err-banner hidden"></div>
 
   <!-- SON DURUM ÖZET ÇUBUĞU -->
+  <div class="outbox-bar hidden" id="outboxBar"></div>
   <div class="status-bar" id="statusBar">
     <div class="status-item">
       Son Beslenme
@@ -1859,10 +1865,12 @@
           body: JSON.stringify(body),
           redirect: 'follow'
         }).then(function(r) {
-          if (!r.ok) throw new Error('Sunucu hatası (' + r.status + ')');
-          return r.json();
+          if (!r.ok) { var he = new Error('Sunucu hatası (' + r.status + ')'); he.retry = true; throw he; }
+          return r.json().catch(function() { var je = new Error('Sunucu geçici olarak yanıt vermedi.'); je.retry = true; throw je; });
         }, function() {
-          throw new Error('İnternet bağlantısı yok veya sunucuya ulaşılamadı.');
+          var ne = new Error('İnternet bağlantısı yok veya sunucuya ulaşılamadı.');
+          ne.retry = true; ne.network = true;
+          throw ne;
         }).then(function(res) {
           if (!res || !res.ok) {
             var e = new Error((res && res.error) || 'Bilinmeyen hata');
@@ -1953,6 +1961,7 @@
         try { pushOffForLogout(); } catch (e) {}
         var s = getSession();
         setSession('');
+        ['bt_boot', 'bt_status', HIST_CACHE_KEY].forEach(function(k) { try { localStorage.removeItem(k); } catch (e) {} });
         try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) {}
         if (CFG.API_URL && s) postApi({ action: 'logout', session: s }).catch(function() {});
         $('accountLine').classList.add('hidden');
@@ -2362,27 +2371,41 @@
       // Sunucudan SADECE görüntülenen sayfayı ister
       function loadHistory() {
         var container = $('historyListContainer');
-        container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Kayıtlar yükleniyor...</div>';
-        $('btnPrevPage').disabled = true;
-        $('btnNextPage').disabled = true;
+        var q = {
+          page: state.currentPage,
+          pageSize: state.pageSize,
+          type: state.historyFilter,
+          sinceTs: historySinceTs(),
+          sort: state.sortOrder
+        };
+        // sinceTs her dakika değişir; önbellek anahtarında sadece süzgeç türü olsun
+        var qKey = [q.page, q.pageSize, q.type, state.historyRange || '', q.sort].join('|');
+        var hc = cacheGet(HIST_CACHE_KEY) || {};
+        if (hc[qKey]) {
+          renderHistoryList(hc[qKey]);
+        } else {
+          container.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Kayıtlar yükleniyor...</div>';
+          $('btnPrevPage').disabled = true;
+          $('btnNextPage').disabled = true;
+        }
         if (!hasServer()) return;
 
         var reqId = ++state.historyReqId; // hızlı sayfa değişiminde eski cevabı yok say
         runApi().withSuccessHandler(function(res) {
           if (reqId !== state.historyReqId) return;
           state.currentPage = res.page;
+          var c = cacheGet(HIST_CACHE_KEY) || {};
+          var keys = Object.keys(c);
+          if (keys.length > 6) delete c[keys[0]];
+          c[qKey] = res;
+          cacheSet(HIST_CACHE_KEY, c);
           renderHistoryList(res);
         }).withFailureHandler(function(err) {
           if (reqId !== state.historyReqId) return;
+          if (hc[qKey]) { showToast('Liste güncellenemedi: ' + errMsg(err)); return; }
           container.innerHTML = '<div class="card" style="color:#dc2626;">Yükleme hatası: ' + esc(errMsg(err)) + '</div>';
           $('paginationBar').classList.add('hidden');
-        }).getRecordsPage({
-          page: state.currentPage,
-          pageSize: state.pageSize,
-          type: state.historyFilter,
-          sinceTs: historySinceTs(),
-          sort: state.sortOrder
-        });
+        }).getRecordsPage(q);
       }
 
       function renderHistoryList(res) {
@@ -2744,12 +2767,13 @@
           p.not = $('editDigerNot').value.trim();
         }
 
-        runApi().withSuccessHandler(function() {
+        runApi().withSuccessHandler(function(res) {
           saveBtn.disabled = false;
           saveBtn.textContent = '💾 Kaydet';
           closeDetailModal();
           showToast('Kayıt güncellendi ✅');
-          loadStatus();
+          if (res && res.status) renderStatus(res.status); else loadStatus();
+          historyCacheClear();
           loadHistory();
         }).withFailureHandler(function(err) {
           fail('Güncelleme hatası: ' + errMsg(err));
@@ -2765,12 +2789,13 @@
         delBtn.disabled = true;
         delBtn.textContent = 'Siliniyor...';
 
-        runApi().withSuccessHandler(function() {
+        runApi().withSuccessHandler(function(res) {
           delBtn.disabled = false;
           delBtn.textContent = '🗑️ Sil';
           closeDetailModal();
           showToast('Kayıt silindi 🗑️');
-          loadStatus();
+          if (res && res.status) renderStatus(res.status); else loadStatus();
+          historyCacheClear();
           loadHistory();
         }).withFailureHandler(function(err) {
           alert('Silme hatası: ' + errMsg(err));
@@ -3284,9 +3309,38 @@
         window.scrollTo(0, 0);
       }
 
-      function renderStatus(res) {
+      function agoText(ts) {
+        var mins = Math.max(0, Math.floor((Date.now() - ts) / 60000));
+        var days = Math.floor(mins / 1440);
+        if (days >= 1) return days + ' gün önce';
+        var h = Math.floor(mins / 60), m = mins % 60;
+        if (h > 0 && m > 0) return h + ' sa ' + m + ' dk önce';
+        if (h > 0) return h + ' sa önce';
+        return m + ' dk önce';
+      }
+
+      var lastStatus = null;
+      function refreshAgo() {
+        var res = lastStatus;
         if (!res) return;
-        setTimeout(function() { maybeShowCreamPopup(res); }, 300);
+        if (res.lastFeedTime) {
+          var fa = res.lastFeedTs ? agoText(res.lastFeedTs) : res.feedAgo;
+          $('stFeed').textContent = res.lastFeedTime + (fa ? ' (' + fa + ')' : '');
+        }
+        if (res.lastDiaperTime) {
+          var da = res.lastDiaperTs ? agoText(res.lastDiaperTs) : res.diaperAgo;
+          $('stDiaper').textContent = res.lastDiaperTime + (da ? ' (' + da + ')' : '');
+        }
+      }
+      setInterval(refreshAgo, 30000);
+
+      function renderStatus(res, fromCache) {
+        if (!res) return;
+        lastStatus = res;
+        if (!fromCache) {
+          cacheSet('bt_status', res);
+          setTimeout(function() { maybeShowCreamPopup(res); }, 300);
+        }
         var feedEl = $('stFeed'), feedSub = $('stFeedSub');
         if (res.lastFeedTime) {
           feedEl.textContent = res.lastFeedTime + (res.feedAgo ? ' (' + res.feedAgo + ')' : '');
@@ -3304,6 +3358,7 @@
         state.nextBreast = res.nextBreast || '';
         nextFeedTs = Number(res.nextFeedTs || 0);
         renderNextFeed();
+        refreshAgo();
         state.breastTail = { side: res.tailSide || res.lastBreast || '', minutes: Number(res.tailMinutes || 0) };
         if (Number(res.minBreastMin) > 0) state.minBreast = Number(res.minBreastMin);
 
@@ -3358,25 +3413,36 @@
         });
       }
 
+      function applyBoot(res) {
+        if (res.email) {
+          $('accountEmail').textContent = '👤 ' + res.email;
+          $('accountLine').classList.remove('hidden');
+        }
+        var sel = $('dolduran'), cur = sel.value;
+        fillPeople(res.people || []);
+        var saved = null;
+        try { saved = localStorage.getItem('baby_tracker_user'); } catch (e) {}
+        var pick = cur || saved || res.defaultName;
+        if (pick) {
+          for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === pick) { sel.value = pick; break; }
+          }
+        }
+      }
+
       function bootstrap() {
         if (!hasServer()) return;
+        // Önce telefonda saklanan son hali anında göster, güncel veri arkadan gelsin
+        var cb = cacheGet('bt_boot'), cs = cacheGet('bt_status');
+        if (cb) applyBoot(cb);
+        if (cs) renderStatus(cs, true);
+        renderOutbox();
         runApi().withSuccessHandler(function(res) {
           showError('');
-          if (res.email) {
-            $('accountEmail').textContent = '👤 ' + res.email;
-            $('accountLine').classList.remove('hidden');
-          }
-          fillPeople(res.people || []);
-          var saved = null;
-          try { saved = localStorage.getItem('baby_tracker_user'); } catch (e) {}
-          var sel = $('dolduran');
-          var pick = saved || res.defaultName;
-          if (pick) {
-            for (var i = 0; i < sel.options.length; i++) {
-              if (sel.options[i].value === pick) { sel.value = pick; break; }
-            }
-          }
+          cacheSet('bt_boot', { email: res.email, people: res.people, defaultName: res.defaultName });
+          applyBoot(res);
           renderStatus(res.status);
+          flushOutbox();
           setTimeout(refreshPushToken, 3000);
         }).withFailureHandler(statusFailed).getBootstrap();
       }
@@ -3534,6 +3600,8 @@
           if (target.id === 'btnPlanBack') { cancelPlan(); return; }
           if (target.id === 'btnCreamOk') { hideModal('creamModalBackdrop'); return; }
           if (target.id === 'btnCreamDiaper') { hideModal('creamModalBackdrop'); startCreamDiaper(); return; }
+          if (target.hasAttribute('data-ob-retry')) { outboxRetry(target.getAttribute('data-ob-retry')); return; }
+          if (target.hasAttribute('data-ob-del')) { outboxDelete(target.getAttribute('data-ob-del')); return; }
           if (target.id === 'btnPushEnable') { pushEnable(); return; }
           if (target.id === 'btnPushDisable') { pushDisable(); return; }
           if (target.id === 'btnPushTest') { pushTest(); return; }
@@ -3735,6 +3803,7 @@
         if (!state.timeTouched && Date.now() - state.lastAutoTime > 60000) setNow(true);
         creamCheckPending = true;
         loadStatus();
+        flushOutbox();
       });
 
       /* ---------------- KAYDET ---------------- */
@@ -4035,22 +4104,121 @@
         sendRecord(payload);
       }
 
+      /* ---------------- GÖNDERİM KUYRUĞU ----------------
+       * KAYDET'e basınca kayıt önce telefona yazılır, form hemen temizlenir; gönderim arka planda yapılır.
+       * İnternet yoksa sırada bekler. Aynı kayıt iki kez giderse sunucu ikincisini yok sayar (formId). */
+
+      var OUTBOX_KEY = 'bt_outbox', outboxBusy = false, outboxTimer = null;
+
+      function readOutbox() { try { return JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]') || []; } catch (e) { return []; } }
+      function writeOutbox(list) {
+        try { if (list.length) localStorage.setItem(OUTBOX_KEY, JSON.stringify(list)); else localStorage.removeItem(OUTBOX_KEY); return true; }
+        catch (e) { return false; }
+      }
+
       function sendRecord(payload) {
+        var list = readOutbox();
+        list.push({ p: payload, at: Date.now(), err: '' });
+        if (!writeOutbox(list)) { sendRecordDirect(payload); return; }  // telefona sığmadı (büyük fotoğraf): eski usul bekleyerek gönder
+        showToast('Kaydedildi 👶 Teşekkürler!');
+        resetForm(payload.kayitTuru);
+        flushOutbox();
+      }
+
+      function sendRecordDirect(payload) {
         var btn = $('submitBtn');
         btn.disabled = true;
         btn.textContent = 'KAYDEDİLİYOR...';
-
-        runApi().withSuccessHandler(function() {
+        runApi().withSuccessHandler(function(res) {
           showToast('Kaydedildi 👶 Teşekkürler!');
           resetForm(payload.kayitTuru);
-          loadStatus();
+          if (res && res.status) renderStatus(res.status); else loadStatus();
         }).withFailureHandler(function(err) {
-          // formId aynı kalır: tekrar denenirse çift kayıt oluşmaz
           alert('Hata oluştu: ' + errMsg(err));
           btn.disabled = false;
           btn.textContent = 'KAYDET';
         }).saveRecord(payload);
       }
+
+      function flushOutbox() {
+        clearTimeout(outboxTimer);
+        if (outboxBusy) return;
+        var list = readOutbox(), item = null;
+        for (var i = 0; i < list.length; i++) if (!list[i].err) { item = list[i]; break; }
+        renderOutbox();
+        if (!item || !hasServer()) return;
+        outboxBusy = true;
+        renderOutbox();
+        apiCall('saveRecord', [item.p]).then(function(res) {
+          outboxBusy = false;
+          writeOutbox(readOutbox().filter(function(x) { return x.p.id !== item.p.id; }));
+          if (res && res.status) renderStatus(res.status); else loadStatus();
+          historyCacheClear();
+          flushOutbox();
+        }, function(err) {
+          outboxBusy = false;
+          if (err.code === 'AUTH') { renderOutbox(); return; }            // girişten sonra devam eder
+          if (err.retry || /meşgul/.test(err.message || '')) {             // geçici: biraz sonra tekrar dene
+            outboxTimer = setTimeout(flushOutbox, err.network ? 30000 : 10000);
+            renderOutbox(err.network);
+            return;
+          }
+          var l = readOutbox();
+          l.forEach(function(x) { if (x.p.id === item.p.id) x.err = errMsg(err); });
+          writeOutbox(l);
+          flushOutbox();
+        });
+      }
+
+      function outboxLabel(p) {
+        var t = (p.olayZamani || '').split('T');
+        var d = t[0] ? t[0].split('-') : [];
+        return p.kayitTuru + ' ' + (d.length === 3 ? d[2] + '.' + d[1] + ' ' : '') + (t[1] || '');
+      }
+
+      function renderOutbox(offline) {
+        var bar = $('outboxBar'), list = readOutbox();
+        if (!list.length) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+        var pending = list.filter(function(x) { return !x.err; }), failed = list.filter(function(x) { return x.err; });
+        var off = offline || (navigator.onLine === false);
+        var h = '';
+        if (pending.length) {
+          h += '<div>' + (off
+            ? '📴 İnternet yok: ' + pending.length + ' kayıt telefonda bekliyor, bağlantı gelince gönderilecek.'
+            : (hasServer() ? '⏳ ' + pending.length + ' kayıt gönderiliyor…' : '🔑 ' + pending.length + ' kayıt girişten sonra gönderilecek.')) + '</div>';
+        }
+        failed.forEach(function(x) {
+          h += '<div class="ob-err">⚠️ Gönderilemedi: ' + esc(outboxLabel(x.p)) + ' — ' + esc(x.err) +
+               '<br><button type="button" data-ob-retry="' + esc(x.p.id) + '">Tekrar dene</button>' +
+               '<button type="button" data-ob-del="' + esc(x.p.id) + '">Sil</button></div>';
+        });
+        bar.innerHTML = h;
+        bar.classList.toggle('offline', !!(off && pending.length));
+        bar.classList.remove('hidden');
+      }
+
+      function outboxRetry(id) {
+        var l = readOutbox();
+        l.forEach(function(x) { if (x.p.id === id) x.err = ''; });
+        writeOutbox(l);
+        flushOutbox();
+      }
+
+      function outboxDelete(id) {
+        if (!confirm('Bu kayıt gönderilmeden silinecek. Emin misiniz?')) return;
+        writeOutbox(readOutbox().filter(function(x) { return x.p.id !== id; }));
+        renderOutbox();
+      }
+
+      window.addEventListener('online', function() { flushOutbox(); });
+      window.addEventListener('offline', function() { renderOutbox(true); });
+
+      /* ---------------- ÖNBELLEK (açılışta anında göster) ---------------- */
+
+      function cacheGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+      function cacheSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+      var HIST_CACHE_KEY = 'bt_hist_cache';
+      function historyCacheClear() { try { localStorage.removeItem(HIST_CACHE_KEY); } catch (e) {} }
 
       /* ---------------- BİLDİRİMLER ---------------- */
 

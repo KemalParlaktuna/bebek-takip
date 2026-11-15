@@ -2021,7 +2021,7 @@
           list.forEach(function(e) {
             var start = e.m, dur = Number(e.dur) || 0;
             if (cur && start < cur.end) start = cur.end;          // aynı saatle girilmiş kalemler: art arda say
-            if (cur && start <= cur.end + 10) {                   // 10 dk'dan kısa ara: aynı emzirme
+            if (cur && start <= cur.end + 45) {                   // 45 dk'dan kısa ara: aynı emzirme, tek kesintisiz çubuk
               cur.end = start + dur;
               cur.parts.push(e.label);
             } else {

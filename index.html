@@ -164,6 +164,9 @@
     .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
     .report-list .alarm { color: var(--danger); font-weight: 700; }
     .report-muted { color: var(--muted); font-size: 14px; }
+    .events-table td, .events-table th { text-align: left !important; white-space: normal; vertical-align: top; }
+    .events-table td:first-child { white-space: nowrap; }
+    .alarm-cell { color: var(--danger); font-weight: 700; }
     @media print {
       .side-nav, .nav-overlay, .app-bar, .status-bar, .no-print, .print-btn, .err-banner, .toast { display: none !important; }
       body { padding: 0 !important; background: #fff; }
@@ -1898,6 +1901,24 @@
         }).getReport(s, e);
       }
 
+      // Rapordaki "Diğer" kayıtlarını okunur hale getirir: ne olduğu + ayrıntısı
+      function describeEvent(ev) {
+        var e = String(ev.event || '');
+        var hasTemp = ev.temp !== '' && ev.temp !== null && ev.temp !== undefined;
+        if (e.indexOf('İlaç') === 0) {
+          return { title: '💊 İlaç / damla', detail: ev.med || 'İlaç adı girilmemiş' };
+        }
+        if (e.indexOf('Ateş') === 0) {
+          return { title: '🌡️ Ateş ölçümü', detail: hasTemp ? ev.temp + ' °C' : 'Değer girilmemiş', alarm: hasTemp && Number(ev.temp) >= 38 };
+        }
+        if (e === 'Kusma') return { title: '🤮 Kusma', detail: ev.med || (hasTemp ? ev.temp + ' °C' : '–') };
+        var custom = e.replace(/^Diğer:\s*/, '');
+        var extra = [];
+        if (ev.med) extra.push(ev.med);
+        if (hasTemp) extra.push(ev.temp + ' °C');
+        return { title: '📝 Diğer', detail: custom + (extra.length ? ' (' + extra.join(', ') + ')' : '') };
+      }
+
       function renderReport(rep) {
         var sm = rep.summary;
         var dash = function(v) { return (v === '' || v === null || v === undefined) ? '–' : v; };
@@ -1968,13 +1989,13 @@
         // İlaç / ateş / diğer
         h += '<div class="report-section"><h3>💊 İlaç, Ateş ve Diğer Olaylar</h3>';
         if (rep.events.length) {
-          h += '<ul class="report-list">' + rep.events.map(function(ev) {
-            var parts = [ev.event];
-            if (ev.med) parts.push(ev.med);
-            if (ev.temp !== '') parts.push(ev.temp + ' °C');
-            if (ev.note) parts.push(ev.note);
-            return '<li>' + esc(ev.time) + ' — ' + esc(parts.join(' • ')) + '</li>';
-          }).join('') + '</ul>';
+          h += '<div class="table-scroll"><table class="report-table events-table"><thead><tr>' +
+               '<th>Tarih / Saat</th><th>Olay</th><th>Ayrıntı</th><th>Not</th></tr></thead><tbody>' +
+               rep.events.map(function(ev) {
+                 var d = describeEvent(ev);
+                 return '<tr><td>' + esc(ev.time) + '</td><td>' + esc(d.title) + '</td><td' +
+                        (d.alarm ? ' class="alarm-cell"' : '') + '>' + esc(d.detail) + '</td><td>' + esc(ev.note || '–') + '</td></tr>';
+               }).join('') + '</tbody></table></div>';
         } else {
           h += '<div class="report-muted">Kayıt yok.</div>';
         }

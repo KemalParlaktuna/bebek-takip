@@ -1908,7 +1908,11 @@
           callback: onGoogleCredential,
           auto_select: true,
           cancel_on_tap_outside: false,
-          itp_support: true
+          itp_support: true,
+          // Chrome/Android: giriş düğmesi ve otomatik giriş ayrı pencere yerine telefonun kendi hesap seçicisini kullanır
+          // (ana ekrana eklenmiş uygulamada açılan Google penceresi boş kalıp takılabiliyor)
+          use_fedcm_for_button: true,
+          use_fedcm_for_prompt: true
         });
         google.accounts.id.renderButton($('gsiBtn'), {
           theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: 'tr', width: 280

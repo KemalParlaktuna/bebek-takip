@@ -1,6 +1,6 @@
 // Basit servis çalışanı: önce ağ, ağ yoksa son kaydedilen kopya.
 // Böylece güncellemeler hemen gelir, internet kesikken uygulama yine açılır.
-var CACHE = 'bebek-takip-v15';
+var CACHE = 'bebek-takip-v16';
 var SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', function(e) {
@@ -26,4 +26,31 @@ self.addEventListener('fetch', function(e) {
       return caches.match(req).then(function(r) { return r || caches.match('index.html'); });
     })
   );
+});
+
+// Bildirimler (Firebase Cloud Messaging üzerinden gelen web push)
+self.addEventListener('push', function(e) {
+  var p = {};
+  try { p = e.data ? e.data.json() : {}; } catch (err) { p = { data: { body: e.data && e.data.text() } }; }
+  var d = p.data || p.notification || p;
+  var title = d.title || 'Bebek Takip';
+  e.waitUntil(self.registration.showNotification(title, {
+    body: d.body || '',
+    tag: d.tag || 'bebek-takip',
+    renotify: true,
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    data: { url: d.url || './' }
+  }));
+});
+
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].url.indexOf(self.registration.scope) === 0 && 'focus' in list[i]) return list[i].focus();
+    }
+    return self.clients.openWindow(url);
+  }));
 });

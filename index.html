@@ -1982,11 +1982,12 @@
       /* ---- Günlük zaman çizelgesi (her gün 24 saatlik bir satır, haftalık grafikler) ---- */
 
       var TL = {
-        meme:   { color: '#2a78d6', label: 'Emzirme (uzunluk = süre)' },
-        bottle: { color: '#eb6834', label: 'Biberon (mama / sağılmış süt)' },
+        meme:   { color: '#2a78d6', label: 'Emzirme' },
+        mama:   { color: '#eda100', label: 'Mama' },
+        sut:    { color: '#e87ba4', label: 'Sağılmış süt' },
         wet:    { color: '#1baf7a', label: 'Islak bez (çiş)' },
-        dirty:  { color: '#eda100', label: 'Kirli bez (kaka)' },
-        both:   { color: '#e87ba4', label: 'Çiş + kaka' },
+        dirty:  { color: '#eb6834', label: 'Kirli bez (kaka)' },
+        both:   { color: '#6250d6', label: 'Çiş + kaka' },
         dry:    { color: '#8a8984', label: 'Kuru bez' }
       };
       var WEEKDAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
@@ -1996,8 +1997,43 @@
       // Kategori = şekil (beslenme: dikdörtgen, bez: daire); kategori içindeki tür = renk
       function tlShape(t, cx, cy) {
         var c = TL[t].color;
-        if (t === 'bottle') return '<rect x="' + (cx - 4) + '" y="' + (cy - 7) + '" width="8" height="14" rx="2" fill="' + c + '" stroke="#fff" stroke-width="1"/>';
+        if (t === 'mama' || t === 'sut') return '<rect x="' + (cx - 4) + '" y="' + (cy - 7) + '" width="8" height="14" rx="2" fill="' + c + '" stroke="#fff" stroke-width="1"/>';
         return '<circle cx="' + cx + '" cy="' + cy + '" r="5.5" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+      }
+
+      // Sunucudan gelen olayları çizime hazırlar:
+      // - aynı öğündeki sol/sağ emzirmeler tek mavi çubuk olur
+      // - biberon kalemleri mama / sağılmış süt olarak ayrılır
+      function prepareTimeline(events) {
+        var out = [], byDay = {};
+        events.forEach(function(e) {
+          if (e.t === 'bottle') {
+            out.push({ day: e.day, m: e.m, t: /^Mama/.test(e.label || '') ? 'mama' : 'sut', label: e.label });
+          } else if (e.t === 'meme') {
+            (byDay[e.day] = byDay[e.day] || []).push(e);
+          } else {
+            out.push(e);
+          }
+        });
+        Object.keys(byDay).forEach(function(day) {
+          var list = byDay[day].slice().sort(function(a, b) { return a.m - b.m; });
+          var cur = null;
+          list.forEach(function(e) {
+            var start = e.m, dur = Number(e.dur) || 0;
+            if (cur && start < cur.end) start = cur.end;          // aynı saatle girilmiş kalemler: art arda say
+            if (cur && start <= cur.end + 10) {                   // 10 dk'dan kısa ara: aynı emzirme
+              cur.end = start + dur;
+              cur.parts.push(e.label);
+            } else {
+              cur = { day: day, m: e.m, end: start + dur, t: 'meme', parts: [e.label] };
+              out.push(cur);
+            }
+          });
+        });
+        out.forEach(function(e) {
+          if (e.t === 'meme') { e.dur = e.end - e.m; e.label = 'Emzirme: ' + e.parts.join(' + ') + ' (toplam ' + durText(e.dur) + ')'; }
+        });
+        return out;
       }
 
       function timelineSvg(days, events) {
@@ -2025,7 +2061,7 @@
                  '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title></rect>';
           });
           dayEv.filter(function(e) { return e.t !== 'meme'; }).forEach(function(e) {
-            var cy = e.t === 'bottle' ? y0 + 13 : y0 + 32;
+            var cy = (e.t === 'mama' || e.t === 'sut') ? y0 + 13 : y0 + 32;
             o += '<g>' + tlShape(e.t, X(e.m), cy) + '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title></g>';
           });
         });
@@ -2039,12 +2075,12 @@
             : '<svg width="14" height="16">' + tlShape(k, 7, 8) + '</svg>';
           return '<span class="tl-legend-item">' + sw + esc(TL[k].label) + '</span>';
         };
-        return '<div class="tl-legend"><span class="tl-legend-group">Beslenme (dikdörtgen):</span>' + item('meme') + item('bottle') + '</div>' +
+        return '<div class="tl-legend"><span class="tl-legend-group">Beslenme (dikdörtgen):</span>' + item('meme') + item('mama') + item('sut') + '</div>' +
                '<div class="tl-legend"><span class="tl-legend-group">Bez (daire):</span>' + item('wet') + item('dirty') + item('both') + item('dry') + '</div>';
       }
 
       function renderTimelines(rep) {
-        var days = rep.days || [], events = rep.timeline || [];
+        var days = rep.days || [], events = prepareTimeline(rep.timeline || []);
         if (!days.length) return '';
         var h = '<div class="report-section"><h3>🕒 Günlük Zaman Çizelgesi</h3>' +
                 '<div class="report-muted" style="margin-bottom:8px;">Her satır bir gün (00:00–24:00). Üst şerit beslenme, alt sıra bez değişimi. Telefonda grafiği sağa kaydırın; bilgisayarda bir işaretin üstüne gelince saati görünür.</div>';

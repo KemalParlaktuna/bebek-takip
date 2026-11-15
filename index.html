@@ -65,6 +65,113 @@
       padding: 0 0 0 8px;
       cursor: pointer;
     }
+    /* ---- Sol panel ---- */
+    .side-nav {
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      width: 260px;
+      background: #ffffff;
+      border-right: 1px solid var(--border);
+      z-index: 950;
+      display: flex;
+      flex-direction: column;
+      padding: calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)) 12px;
+      transform: translateX(-100%);
+      transition: transform 0.22s ease;
+      box-shadow: 4px 0 24px rgba(15, 23, 42, 0.12);
+    }
+    .side-nav.open { transform: translateX(0); }
+    .nav-brand { font-size: 20px; font-weight: 800; padding: 6px 10px 18px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      padding: 13px 12px;
+      margin-bottom: 4px;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+      color: #334155;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .nav-item span { width: 24px; text-align: center; }
+    .nav-item.active { background: #eff6ff; color: var(--primary); }
+    .nav-footer { margin-top: auto; padding: 10px 6px 0; border-top: 1px solid #e2e8f0; }
+    .nav-footer .account-line { text-align: left; margin: 0; }
+    .nav-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      z-index: 940;
+    }
+    .app-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .menu-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      font-size: 22px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .app-bar-title { font-size: 20px; font-weight: 800; }
+    @media (min-width: 900px) {
+      .side-nav { transform: none; box-shadow: none; }
+      .nav-overlay { display: none !important; }
+      .menu-btn { display: none; }
+      body { padding-left: 284px; }
+      body > *:not(.side-nav):not(.nav-overlay):not(.modal-backdrop):not(.toast):not(.lightbox):not(.login-screen) {
+        max-width: 760px;
+      }
+    }
+
+    /* ---- Doktor raporu ---- */
+    .report-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .report-date-label { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+    .report-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 2px 10px; }
+    .report-head h2 { font-size: 18px; margin: 0; }
+    .print-btn {
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    @media (min-width: 600px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+    .stat-tile { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; }
+    .stat-tile .v { font-size: 22px; font-weight: 800; }
+    .stat-tile .l { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .report-section { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+    .report-section h3 { font-size: 15px; margin: 0 0 8px; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .report-table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; }
+    .report-table th, .report-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; }
+    .report-table th:first-child, .report-table td:first-child { text-align: left; position: sticky; left: 0; background: #fff; }
+    .report-table th { color: var(--muted); font-weight: 700; font-size: 12px; }
+    .report-table tr.empty td { color: #94a3b8; }
+    .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+    .report-list .alarm { color: var(--danger); font-weight: 700; }
+    .report-muted { color: var(--muted); font-size: 14px; }
+    @media print {
+      .side-nav, .nav-overlay, .app-bar, .status-bar, .no-print, .print-btn, .err-banner, .toast { display: none !important; }
+      body { padding: 0 !important; background: #fff; }
+      .report-section, .stat-tile { break-inside: avoid; }
+      .table-scroll { overflow: visible; }
+      .report-table { white-space: normal; }
+    }
+
     .top-tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -753,6 +860,18 @@
       cursor: pointer;
     }
     .hidden { display: none !important; }
+    .breast-hint {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #334155;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .breast-hint:empty { display: none; }
+    .breast-hint .warn { color: #b45309; font-weight: 700; }
+    .breast-hint .ok { color: #15803d; font-weight: 700; }
     /* Uygulama içi rakam tuş takımı: telefon klavyesi hiç açılmaz */
     .numpad {
       display: grid;
@@ -896,10 +1015,22 @@
 
   <div id="toast" class="toast hidden">Kaydedildi 👶 Teşekkürler!</div>
 
-  <!-- ÜST SEKME GEÇİŞ ÇUBUĞU -->
-  <div class="top-tabs">
-    <button type="button" class="tab-btn active" id="tabBtnNew">➕ Yeni Kayıt</button>
-    <button type="button" class="tab-btn" id="tabBtnHistory">📋 Geçmiş Kayıtlar</button>
+  <!-- SOL PANEL (mobilde çekmece, geniş ekranda sabit) -->
+  <div id="navOverlay" class="nav-overlay hidden"></div>
+  <nav id="sideNav" class="side-nav" aria-label="Ana menü">
+    <div class="nav-brand">👶 Bebek Takip</div>
+    <button type="button" class="nav-item active" data-nav="new"><span>➕</span> Yeni Kayıt</button>
+    <button type="button" class="nav-item" data-nav="history"><span>📋</span> Geçmiş Kayıtlar</button>
+    <button type="button" class="nav-item" data-nav="report"><span>🩺</span> Doktor Raporu</button>
+    <div class="nav-footer">
+      <div id="accountLine" class="account-line hidden"><span id="accountEmail"></span><button type="button" id="btnLogout">Çıkış</button></div>
+    </div>
+  </nav>
+
+  <!-- ÜST ÇUBUK -->
+  <div class="app-bar">
+    <button type="button" class="menu-btn" id="btnMenu" aria-label="Menüyü aç">☰</button>
+    <div class="app-bar-title" id="appBarTitle">Yeni Kayıt</div>
   </div>
 
   <div id="loginScreen" class="login-screen hidden">
@@ -910,11 +1041,10 @@
     <div id="loginError" class="login-error"></div>
   </div>
 
-  <div id="accountLine" class="account-line hidden"><span id="accountEmail"></span><button type="button" id="btnLogout">Çıkış</button></div>
   <div id="errBanner" class="err-banner hidden"></div>
 
   <!-- SON DURUM ÖZET ÇUBUĞU -->
-  <div class="status-bar">
+  <div class="status-bar" id="statusBar">
     <div class="status-item">
       Son Beslenme
       <strong id="stFeed">Yükleniyor...</strong>
@@ -1142,6 +1272,37 @@
       <div class="page-info" id="pageInfoText">Sayfa 1 / 1</div>
       <button type="button" class="page-btn" id="btnNextPage">Sonraki ▶</button>
     </div>
+  </div>
+
+  <!-- DOKTOR RAPORU -->
+  <div id="viewReport" class="hidden">
+    <div class="card no-print">
+      <label class="sec-title">Tarih Aralığı</label>
+      <div class="report-dates">
+        <div>
+          <div class="report-date-label">Başlangıç</div>
+          <div class="date-wrap small">
+            <span id="reportStartText">--/--/----</span>
+            <input type="date" id="reportStart" class="date-native" aria-label="Başlangıç tarihi">
+          </div>
+        </div>
+        <div>
+          <div class="report-date-label">Bitiş</div>
+          <div class="date-wrap small">
+            <span id="reportEndText">--/--/----</span>
+            <input type="date" id="reportEnd" class="date-native" aria-label="Bitiş tarihi">
+          </div>
+        </div>
+      </div>
+      <div class="date-range-row" id="reportQuickGroup" style="margin-top:10px;">
+        <button type="button" class="range-pill" data-rdays="1">Bugün</button>
+        <button type="button" class="range-pill active" data-rdays="7">Son 7 gün</button>
+        <button type="button" class="range-pill" data-rdays="14">Son 14 gün</button>
+        <button type="button" class="range-pill" data-rdays="30">Son 30 gün</button>
+      </div>
+      <button type="button" class="submit-btn" id="btnLoadReport" style="margin-top:12px;">Raporu Getir</button>
+    </div>
+    <div id="reportBody"></div>
   </div>
 
   <!-- KAYIT DETAY VE DÜZENLEME MODALI -->
@@ -1395,6 +1556,7 @@
           <button type="button" class="q-pill" data-msure="15">15 dk</button>
           <button type="button" class="q-pill" data-msure="20">20 dk</button>
         </div>
+        <div id="feedModalHint" class="breast-hint"></div>
         <div class="numpad hidden" id="surePad" style="margin-top:10px;"></div>
       </div>
 
@@ -1444,6 +1606,8 @@
         modalItemHour: 12,
         modalItemMinute: 0,
         nextBreast: '',
+        breastTail: { side: '', minutes: 0 }, // sunucudan: son memede art arda geçen süre
+        minBreast: 15,                        // bir meme en az kaç dk emzirilmeli
 
         kayitTuru: '',
         bezDurumu: 'Kuru',
@@ -1562,7 +1726,7 @@
           withSuccessHandler: function(f) { ok = f; return r; },
           withFailureHandler: function(f) { fail = f; return r; }
         };
-        ['getBootstrap', 'getLastStatus', 'getRecordsPage', 'saveRecord', 'updateRecord', 'deleteRecord', 'getPhoto']
+        ['getBootstrap', 'getLastStatus', 'getRecordsPage', 'saveRecord', 'updateRecord', 'deleteRecord', 'getPhoto', 'getReport']
           .forEach(function(name) {
             r[name] = function() {
               var args = Array.prototype.slice.call(arguments);
@@ -1665,13 +1829,158 @@
 
       /* ---------------- SEKMELER & GEÇMİŞ ---------------- */
 
-      function switchTab(tabName) {
-        var isNew = (tabName === 'new');
-        $('tabBtnNew').classList.toggle('active', isNew);
-        $('tabBtnHistory').classList.toggle('active', !isNew);
-        $('viewNewRecord').classList.toggle('hidden', !isNew);
-        $('viewHistory').classList.toggle('hidden', isNew);
-        if (!isNew) { state.currentPage = 1; loadHistory(); }
+      var VIEWS = {
+        'new':     { el: 'viewNewRecord', title: 'Yeni Kayıt',        status: true },
+        'history': { el: 'viewHistory',   title: 'Geçmiş Kayıtlar',   status: true },
+        'report':  { el: 'viewReport',    title: 'Doktor Raporu',     status: false }
+      };
+
+      function switchTab(name) {
+        if (!VIEWS[name]) name = 'new';
+        for (var k in VIEWS) $(VIEWS[k].el).classList.toggle('hidden', k !== name);
+        var items = document.querySelectorAll('[data-nav]');
+        for (var i = 0; i < items.length; i++) items[i].classList.toggle('active', items[i].getAttribute('data-nav') === name);
+        $('appBarTitle').textContent = VIEWS[name].title;
+        $('statusBar').classList.toggle('hidden', !VIEWS[name].status);
+        closeNav();
+        window.scrollTo(0, 0);
+        if (name === 'history') { state.currentPage = 1; loadHistory(); }
+        if (name === 'report') initReport();
+      }
+
+      /* ---------------- SOL PANEL ---------------- */
+
+      function openNav() {
+        $('sideNav').classList.add('open');
+        $('navOverlay').classList.remove('hidden');
+      }
+
+      function closeNav() {
+        $('sideNav').classList.remove('open');
+        $('navOverlay').classList.add('hidden');
+      }
+
+      /* ---------------- DOKTOR RAPORU ---------------- */
+
+      var reportInited = false;
+
+      function isoOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+
+      function setReportRange(days) {
+        var end = new Date();
+        var start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - (days - 1));
+        $('reportStart').value = isoOf(start);
+        $('reportEnd').value = isoOf(end);
+        syncDateText('reportStart');
+        syncDateText('reportEnd');
+      }
+
+      function initReport() {
+        if (reportInited) return;
+        reportInited = true;
+        setReportRange(7);
+      }
+
+      function loadReport() {
+        var s = $('reportStart').value, e = $('reportEnd').value;
+        if (!s || !e) { alert('Başlangıç ve bitiş tarihi seçin.'); return; }
+        if (s > e) { alert('Bitiş tarihi başlangıçtan önce olamaz.'); return; }
+        var body = $('reportBody');
+        body.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">Rapor hazırlanıyor...</div>';
+        var btn = $('btnLoadReport');
+        btn.disabled = true;
+        runApi().withSuccessHandler(function(rep) {
+          btn.disabled = false;
+          renderReport(rep);
+        }).withFailureHandler(function(err) {
+          btn.disabled = false;
+          body.innerHTML = '<div class="card" style="color:#dc2626;">Rapor alınamadı: ' + esc(errMsg(err)) + '</div>';
+        }).getReport(s, e);
+      }
+
+      function renderReport(rep) {
+        var sm = rep.summary;
+        var dash = function(v) { return (v === '' || v === null || v === undefined) ? '–' : v; };
+        var tile = function(v, l) { return '<div class="stat-tile"><div class="v">' + esc(dash(v)) + '</div><div class="l">' + esc(l) + '</div></div>'; };
+
+        var h = '';
+        h += '<div class="report-head"><h2>' + esc(rep.start) + ' – ' + esc(rep.end) + ' (' + rep.dayCount + ' gün)</h2>' +
+             '<button type="button" class="print-btn" id="btnPrintReport">🖨️ Yazdır / PDF</button></div>';
+
+        if (!rep.recordCount) {
+          h += '<div class="report-section report-muted">Bu tarih aralığında kayıt yok.</div>';
+          $('reportBody').innerHTML = h;
+          return;
+        }
+
+        h += '<div class="stat-grid">' +
+          tile(sm.wetPerDay, 'Günlük ort. ıslak bez') +
+          tile(sm.dirtyPerDay, 'Günlük ort. kirli bez') +
+          tile(sm.feedsPerDay, 'Günlük ort. beslenme') +
+          tile(sm.avgGapH === '' ? '' : sm.avgGapH + ' sa', 'Ort. beslenme aralığı') +
+          tile(sm.breastMinPerDay + ' dk', 'Günlük ort. emzirme') +
+          tile(sm.leftTotal + ' / ' + sm.rightTotal, 'Toplam Sol / Sağ (dk)') +
+          tile(sm.mamaMlPerDay + ' ml', 'Günlük ort. mama') +
+          tile(sm.sutMlPerDay + ' ml', 'Günlük ort. sağılmış süt') +
+          '</div>';
+        if (sm.maxGapH !== '') {
+          h += '<div class="report-muted" style="margin:-4px 2px 12px;">En uzun beslenme aralığı: <b>' + esc(sm.maxGapH) + ' saat</b></div>';
+        }
+
+        // Uyarılar
+        h += '<div class="report-section"><h3>⚠️ Dikkat Edilecekler</h3>';
+        if (rep.alarms.length) {
+          h += '<ul class="report-list">' + rep.alarms.map(function(a) {
+            return '<li><span class="alarm">' + esc(a.text) + '</span> — ' + esc(a.time) + (a.note ? ' <i>(' + esc(a.note) + ')</i>' : '') + '</li>';
+          }).join('') + '</ul>';
+        } else {
+          h += '<div class="report-muted">Ateş ≥ 38 °C, alarm renkli kaka, belirgin pişik veya fışkırır kusma kaydı yok.</div>';
+        }
+        h += '</div>';
+
+        // Günlük tablo
+        var cols = [['date', 'Tarih'], ['wet', 'Islak'], ['dirty', 'Kirli'], ['feeds', 'Beslenme'], ['breastFeeds', 'Emzirme'],
+                    ['breastMin', 'Emz. dk'], ['left', 'Sol'], ['right', 'Sağ'], ['mamaMl', 'Mama ml'], ['sutMl', 'Süt ml'],
+                    ['avgGapH', 'Ort. aralık (sa)'], ['maxGapH', 'En uzun (sa)']];
+        h += '<div class="report-section"><h3>📅 Günlük Döküm</h3><div class="table-scroll"><table class="report-table"><thead><tr>' +
+             cols.map(function(c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>';
+        rep.days.forEach(function(d) {
+          var empty = !d.wet && !d.dirty && !d.feeds;
+          h += '<tr' + (empty ? ' class="empty"' : '') + '>' + cols.map(function(c) {
+            var v = d[c[0]];
+            if (c[0] !== 'date' && (v === 0 || v === '')) v = '–';
+            return '<td>' + esc(v) + '</td>';
+          }).join('') + '</tr>';
+        });
+        h += '</tbody></table></div></div>';
+
+        // Kaka renkleri
+        h += '<div class="report-section"><h3>💩 Kaka Rengi Dağılımı</h3>';
+        if (rep.colors.length) {
+          h += '<ul class="report-list">' + rep.colors.map(function(c) {
+            return '<li' + (c.alarm ? ' class="alarm"' : '') + '>' + esc(c.color) + ': <b>' + c.count + '</b></li>';
+          }).join('') + '</ul>';
+        } else {
+          h += '<div class="report-muted">Renk bilgisi girilmiş kaka kaydı yok.</div>';
+        }
+        h += '</div>';
+
+        // İlaç / ateş / diğer
+        h += '<div class="report-section"><h3>💊 İlaç, Ateş ve Diğer Olaylar</h3>';
+        if (rep.events.length) {
+          h += '<ul class="report-list">' + rep.events.map(function(ev) {
+            var parts = [ev.event];
+            if (ev.med) parts.push(ev.med);
+            if (ev.temp !== '') parts.push(ev.temp + ' °C');
+            if (ev.note) parts.push(ev.note);
+            return '<li>' + esc(ev.time) + ' — ' + esc(parts.join(' • ')) + '</li>';
+          }).join('') + '</ul>';
+        } else {
+          h += '<div class="report-muted">Kayıt yok.</div>';
+        }
+        h += '</div>';
+
+        $('reportBody').innerHTML = h;
       }
 
       function historySinceTs() {
@@ -2351,6 +2660,7 @@
           if (valPad.fresh) { el.value = k; valPad.fresh = false; }
           else if (String(el.value).length < 3) el.value = String(el.value) + k;
         }
+        if (valPad.input === 'modalSureInput') updateBreastHint();
       }
 
       buildNumpad($('timePad'), 'Tamam');
@@ -2376,6 +2686,54 @@
         sideBtns[1].classList.toggle('active', side === 'Sağ');
       }
 
+      /* ---- Meme süresi kuralı: bir meme en az state.minBreast dk; yarım kalırsa sonraki emzirme onunla devam eder ---- */
+
+      // items: formdaki kalemler (eskiden yeniye). Sondan geriye aynı taraftaki dakikaları toplar;
+      // formun başına kadar aynı taraf sürüyorsa önceki öğünlerden gelen süreyi (sunucu) de ekler.
+      function breastTailWith(items) {
+        var side = '', total = 0;
+        for (var i = items.length - 1; i >= 0; i--) {
+          var it = items[i];
+          if (it.kind !== 'meme') continue;
+          if (!side) side = it.meme;
+          if (it.meme !== side) return { side: side, minutes: total };
+          total += Number(it.sure) || 0;
+        }
+        var t = state.breastTail || {};
+        if (!side) return { side: t.side || '', minutes: t.minutes || 0 };
+        if (t.side === side) total += (t.minutes || 0);
+        return { side: side, minutes: total };
+      }
+
+      function nextBreastFor(items) {
+        var tail = breastTailWith(items), min = state.minBreast;
+        if (!tail.side) return { side: 'Sol', remaining: 0, done: 0, partial: false };
+        if (tail.minutes < min) return { side: tail.side, remaining: min - tail.minutes, done: tail.minutes, partial: true };
+        return { side: tail.side === 'Sol' ? 'Sağ' : 'Sol', remaining: 0, done: 0, partial: false };
+      }
+
+      function updateBreastHint() {
+        var el = $('feedModalHint');
+        if (state.modalFeedKind !== 'meme') { el.innerHTML = ''; return; }
+        var before = state.editingFeedIdx >= 0 ? state.feedItems.slice(0, state.editingFeedIdx) : state.feedItems;
+        var sug = nextBreastFor(before);
+        var min = state.minBreast;
+        var side = state.modalSide;
+        var sure = parseInt($('modalSureInput').value, 10) || 0;
+        var lines = [];
+        if (sug.partial) {
+          lines.push('↩️ <b>' + sug.side + ' meme yarım kalmıştı</b> (' + sug.done + ' dk emzirildi, ~' + sug.remaining + ' dk kaldı).');
+        }
+        var effective = sure + (sug.partial && side === sug.side ? sug.done : 0);
+        if (effective < min) {
+          lines.push('<span class="warn">⏳ ' + side + ' memede toplam ' + effective + ' dk: en az ' + min +
+                     ' dk olmalı. Kısa kalırsa sonraki emzirme ' + side + ' memeyle başlar.</span>');
+        } else {
+          lines.push('<span class="ok">✓ ' + side + ' meme tamamlanıyor (toplam ' + effective + ' dk).</span>');
+        }
+        el.innerHTML = lines.join('<br>');
+      }
+
       // Var olan bir öğeyi düzenlemek için modalı doldurarak aç
       function openFeedModalForEdit(idx) {
         var it = state.feedItems[idx];
@@ -2391,6 +2749,7 @@
         $('modalMlInput').value = it.kind !== 'meme' ? it.ml : 15;
         $('feedModalTitle').textContent = (idx + 1) + '. Öğeyi Düzenle';
         $('btnConfirmFeedModal').textContent = 'Kaydet';
+        updateBreastHint();
         showModal('feedModalBackdrop');
       }
 
@@ -2399,12 +2758,9 @@
         state.editingFeedIdx = -1;
         $('feedModalTitle').textContent = 'Beslenme Öğesi Ekle';
         $('btnConfirmFeedModal').textContent = 'Ekle';
-        var lastMeme = null;
-        for (var i = state.feedItems.length - 1; i >= 0; i--) {
-          if (state.feedItems[i].kind === 'meme') { lastMeme = state.feedItems[i].meme; break; }
-        }
-        if (lastMeme) state.modalSide = (lastMeme === 'Sol') ? 'Sağ' : 'Sol';
-        else state.modalSide = state.nextBreast || 'Sol'; // önceki öğüne göre sıradaki meme
+        // Sıradaki meme: yarım kalan varsa o, yoksa diğer taraf; süre: kalan süre ya da en az süre
+        var sug = nextBreastFor(state.feedItems);
+        state.modalSide = sug.side;
         state.modalFeedKind = 'meme';
 
         if (state.feedItems.length === 0) {
@@ -2421,8 +2777,9 @@
 
         setModalKind('meme');
         setModalSide(state.modalSide);
-        $('modalSureInput').value = 15;
+        $('modalSureInput').value = sug.partial ? sug.remaining : state.minBreast;
         $('modalMlInput').value = 15;
+        updateBreastHint();
         showModal('feedModalBackdrop');
       }
 
@@ -2529,12 +2886,20 @@
         var feedEl = $('stFeed'), feedSub = $('stFeedSub');
         if (res.lastFeedTime) {
           feedEl.textContent = res.lastFeedTime + (res.feedAgo ? ' (' + res.feedAgo + ')' : '');
-          feedSub.textContent = res.lastBreast ? ('Son meme: ' + res.lastBreast + ' → Sıradaki: ' + res.nextBreast) : '';
+          if (res.lastBreast) {
+            var tm = Number(res.tailMinutes || 0);
+            feedSub.textContent = 'Son meme: ' + res.lastBreast + ' (' + tm + ' dk) → Sıradaki: ' + res.nextBreast +
+              (Number(res.nextRemaining) > 0 ? ' (yarım kaldı, ~' + res.nextRemaining + ' dk)' : '');
+          } else {
+            feedSub.textContent = '';
+          }
         } else {
           feedEl.textContent = 'Henüz kayıt yok';
           feedSub.textContent = '';
         }
         state.nextBreast = res.nextBreast || '';
+        state.breastTail = { side: res.tailSide || res.lastBreast || '', minutes: Number(res.tailMinutes || 0) };
+        if (Number(res.minBreastMin) > 0) state.minBreast = Number(res.minBreastMin);
 
         var diaperEl = $('stDiaper');
         if (res.lastDiaperTime) diaperEl.textContent = res.lastDiaperTime + (res.diaperAgo ? ' (' + res.diaperAgo + ')' : '');
@@ -2685,6 +3050,7 @@
           if (e.target && e.target.id === 'timeModalBackdrop') { closeTimeModal(); return; }
           if (e.target && e.target.id === 'feedModalBackdrop') { closeFeedModal(); return; }
           if (e.target && e.target.id === 'detailModalBackdrop') { closeDetailModal(); return; }
+          if (e.target && e.target.id === 'navOverlay') { closeNav(); return; }
           if (e.target && e.target.getAttribute && e.target.getAttribute('data-lightbox')) { openLightbox(e.target.src); return; }
           if (e.target && (e.target.id === 'photoLightbox' || e.target.id === 'lightboxImg')) { closeLightbox(); return; }
 
@@ -2710,8 +3076,15 @@
 
           if (target.id === 'btnCloseLightbox') { closeLightbox(); return; }
           if (target.id === 'btnLogout') { if (confirm('Çıkış yapılsın mı?')) logout(); return; }
-          if (target.id === 'tabBtnNew') { switchTab('new'); return; }
-          if (target.id === 'tabBtnHistory') { switchTab('history'); return; }
+          if (target.id === 'btnMenu') { openNav(); return; }
+          if (target.hasAttribute('data-nav')) { switchTab(target.getAttribute('data-nav')); return; }
+          if (target.id === 'btnLoadReport') { loadReport(); return; }
+          if (target.id === 'btnPrintReport') { window.print(); return; }
+          if (target.hasAttribute('data-rdays')) {
+            setReportRange(Number(target.getAttribute('data-rdays')));
+            setActiveChip($('reportQuickGroup'), target);
+            return;
+          }
           if (target.id === 'btnRefreshHistory') { loadHistory(); return; }
           if (target.id === 'btnCloseDetailModal') { closeDetailModal(); return; }
           if (target.id === 'btnEnterEditMode') { enterEditMode(); return; }
@@ -2780,11 +3153,13 @@
             setActiveChip($('modalFeedKindGroup'), target);
             $('modalMemeFields').classList.toggle('hidden', fk !== 'meme');
             $('modalMlFields').classList.toggle('hidden', fk === 'meme');
+            updateBreastHint();
             return;
           }
           if (target.hasAttribute('data-side')) {
             state.modalSide = target.getAttribute('data-side');
             setActiveChip($('modalSideGroup'), target);
+            updateBreastHint();
             return;
           }
           if (target.hasAttribute('data-mstep') || target.hasAttribute('data-msure') ||
@@ -2795,9 +3170,10 @@
           if (target.hasAttribute('data-mstep')) {
             var sEl = $('modalSureInput');
             sEl.value = Math.max(1, (parseInt(sEl.value, 10) || 15) + Number(target.getAttribute('data-mstep')));
+            updateBreastHint();
             return;
           }
-          if (target.hasAttribute('data-msure')) { $('modalSureInput').value = target.getAttribute('data-msure'); return; }
+          if (target.hasAttribute('data-msure')) { $('modalSureInput').value = target.getAttribute('data-msure'); updateBreastHint(); return; }
           if (target.hasAttribute('data-mlstep')) {
             var mlEl = $('modalMlInput');
             mlEl.value = Math.max(1, (parseInt(mlEl.value, 10) || 15) + Number(target.getAttribute('data-mlstep')));
@@ -2837,6 +3213,10 @@
         }
         if (e.target.id === 'olayTarih') { state.timeTouched = true; syncDateText('olayTarih'); }
         if (e.target.id === 'editTarih') syncDateText('editTarih');
+        if (e.target.id === 'reportStart' || e.target.id === 'reportEnd') {
+          syncDateText(e.target.id);
+          setActiveChip($('reportQuickGroup'), null);
+        }
         if (e.target.id === 'pageSizeSelect') {
           state.pageSize = Number(e.target.value) || 10;
           state.currentPage = 1;
@@ -2855,11 +3235,11 @@
       });
 
       document.addEventListener('input', function(e) {
-        if (e.target.id === 'olayTarih' || e.target.id === 'editTarih') syncDateText(e.target.id);
+        if (e.target.id === 'olayTarih' || e.target.id === 'editTarih' || e.target.id === 'reportStart' || e.target.id === 'reportEnd') syncDateText(e.target.id);
       });
 
       // Masaüstü tarayıcılarda şeffaf alana tıklanınca takvimi aç (mobilde zaten açılır)
-      ['olayTarih', 'editTarih'].forEach(function(id) {
+      ['olayTarih', 'editTarih', 'reportStart', 'reportEnd'].forEach(function(id) {
         $(id).addEventListener('click', function() {
           try { if (this.showPicker) this.showPicker(); } catch (err) {}
         });

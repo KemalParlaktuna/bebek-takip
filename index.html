@@ -164,6 +164,19 @@
     .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
     .report-list .alarm { color: var(--danger); font-weight: 700; }
     .report-muted { color: var(--muted); font-size: 14px; }
+    .timeline-svg { display: block; min-width: 712px; }
+    .timeline-svg .tl-axis { font-size: 11px; fill: #52514e; font-family: inherit; }
+    .timeline-svg .tl-day { font-size: 13px; font-weight: 700; fill: #0b0b0b; font-family: inherit; }
+    .timeline-svg .tl-date { font-size: 11px; fill: #52514e; font-family: inherit; }
+    .tl-week-title { font-size: 14px; font-weight: 800; margin: 12px 0 6px; }
+    .tl-wrap { margin-bottom: 4px; }
+    .tl-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: #52514e; }
+    .tl-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    @media print {
+      .tl-week-title { break-after: avoid; }
+      .tl-wrap { break-inside: avoid; }
+      .timeline-svg { min-width: 0; width: 100%; height: auto; }
+    }
     .events-table td, .events-table th { text-align: left !important; white-space: normal; vertical-align: top; }
     .events-table td:first-child { white-space: nowrap; }
     .alarm-cell { color: var(--danger); font-weight: 700; }
@@ -1965,6 +1978,87 @@
         }).getReport(s, e);
       }
 
+      /* ---- Günlük zaman çizelgesi (her gün 24 saatlik bir satır, haftalık grafikler) ---- */
+
+      var TL = {
+        meme:   { color: '#2a78d6', label: 'Emzirme (çubuk uzunluğu = süre)' },
+        bottle: { color: '#eb6834', label: 'Biberon (mama / sağılmış süt)' },
+        wet:    { color: '#1baf7a', label: 'Islak bez (çiş)' },
+        dirty:  { color: '#eda100', label: 'Kirli bez (kaka)' },
+        both:   { color: '#e87ba4', label: 'Çiş + kaka' },
+        dry:    { color: '#8a8984', label: 'Kuru bez' }
+      };
+      var WEEKDAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+      function hhmm(m) { m = Math.max(0, Math.min(1439, Math.round(m))) ; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
+
+      // Bez işaretleri farklı şekillerle de ayrışır (renk körlüğü ve siyah-beyaz baskı için)
+      function tlShape(t, cx, cy) {
+        var c = TL[t].color, r = 5.5;
+        if (t === 'wet') return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+        if (t === 'dirty') return '<rect x="' + (cx - r) + '" y="' + (cy - r) + '" width="' + (2 * r) + '" height="' + (2 * r) + '" rx="2" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+        if (t === 'both') return '<path d="M' + cx + ' ' + (cy - r - 1.5) + ' L' + (cx + r + 1.5) + ' ' + cy + ' L' + cx + ' ' + (cy + r + 1.5) + ' L' + (cx - r - 1.5) + ' ' + cy + ' Z" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+        if (t === 'dry') return '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 1) + '" fill="#fff" stroke="' + c + '" stroke-width="2"/>';
+        // biberon: üçgen
+        return '<path d="M' + cx + ' ' + (cy - r - 1) + ' L' + (cx + r + 1) + ' ' + (cy + r) + ' L' + (cx - r - 1) + ' ' + (cy + r) + ' Z" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+      }
+
+      function timelineSvg(days, events) {
+        var LW = 78, W = 624, RH = 44, TOP = 22, H = TOP + days.length * RH + 6;
+        var X = function(m) { return LW + Math.max(0, Math.min(1440, m)) / 1440 * W; };
+        var o = '<svg class="timeline-svg" viewBox="0 0 ' + (LW + W + 10) + ' ' + H + '" width="' + (LW + W + 10) + '" height="' + H + '" role="img" aria-label="Günlük beslenme ve bez zaman çizelgesi">';
+        // saat ızgarası
+        for (var hr = 0; hr <= 24; hr++) {
+          var x = X(hr * 60), major = hr % 3 === 0;
+          o += '<line x1="' + x + '" y1="' + (TOP - 4) + '" x2="' + x + '" y2="' + (H - 6) + '" stroke="' + (major ? '#d9d8d4' : '#efeeea') + '" stroke-width="1"/>';
+          if (major) o += '<text x="' + x + '" y="12" text-anchor="middle" class="tl-axis">' + pad2(hr) + '</text>';
+        }
+        days.forEach(function(d, i) {
+          var y0 = TOP + i * RH;
+          var p = d.iso.split('-'), wd = WEEKDAYS[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+          if (i > 0) o += '<line x1="0" y1="' + y0 + '" x2="' + (LW + W) + '" y2="' + y0 + '" stroke="#e5e4df" stroke-width="1"/>';
+          o += '<text x="4" y="' + (y0 + 18) + '" class="tl-day">' + wd + '</text>';
+          o += '<text x="4" y="' + (y0 + 33) + '" class="tl-date">' + p[2] + '.' + p[1] + '</text>';
+          // şeritler: üstte beslenme, altta bez
+          o += '<rect x="' + LW + '" y="' + (y0 + 6) + '" width="' + W + '" height="14" fill="#f6f6f3" rx="3"/>';
+          var dayEv = events.filter(function(e) { return e.day === d.iso; });
+          dayEv.filter(function(e) { return e.t === 'meme'; }).forEach(function(e) {
+            var x1 = X(e.m), w = Math.max(3, X(e.m + (e.dur || 0)) - x1);
+            o += '<rect x="' + x1 + '" y="' + (y0 + 6) + '" width="' + w + '" height="14" rx="2" fill="' + TL.meme.color + '" stroke="#fff" stroke-width="1">' +
+                 '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title></rect>';
+          });
+          dayEv.filter(function(e) { return e.t !== 'meme'; }).forEach(function(e) {
+            var cy = e.t === 'bottle' ? y0 + 13 : y0 + 32;
+            o += '<g>' + tlShape(e.t, X(e.m), cy) + '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title></g>';
+          });
+        });
+        return o + '</svg>';
+      }
+
+      function timelineLegend() {
+        return '<div class="tl-legend">' + Object.keys(TL).map(function(k) {
+          var sw = k === 'meme'
+            ? '<svg width="22" height="14"><rect x="1" y="2" width="20" height="10" rx="2" fill="' + TL.meme.color + '"/></svg>'
+            : '<svg width="16" height="16">' + tlShape(k, 8, 8) + '</svg>';
+          return '<span class="tl-legend-item">' + sw + esc(TL[k].label) + '</span>';
+        }).join('') + '</div>';
+      }
+
+      function renderTimelines(rep) {
+        var days = rep.days || [], events = rep.timeline || [];
+        if (!days.length) return '';
+        var h = '<div class="report-section"><h3>🕒 Günlük Zaman Çizelgesi</h3>' +
+                '<div class="report-muted" style="margin-bottom:8px;">Her satır bir gün (00:00–24:00). Üst şerit beslenme, alt sıra bez değişimi. Telefonda grafiği sağa kaydırın; bilgisayarda bir işaretin üstüne gelince saati görünür.</div>';
+        for (var i = 0, w = 1; i < days.length; i += 7, w++) {
+          var chunk = days.slice(i, i + 7);
+          if (days.length > 7) {
+            h += '<div class="tl-week-title">' + w + '. Hafta: ' + esc(chunk[0].date) + ' – ' + esc(chunk[chunk.length - 1].date) + '</div>';
+          }
+          h += '<div class="table-scroll tl-wrap">' + timelineSvg(chunk, events) + '</div>';
+        }
+        return h + timelineLegend() + '</div>';
+      }
+
       // Rapordaki "Diğer" kayıtlarını okunur hale getirir: ne olduğu + ayrıntısı
       function describeEvent(ev) {
         var e = String(ev.event || '');
@@ -1998,19 +2092,20 @@
           return;
         }
 
+        var dur = function(m) { return (m === '' || m === null || m === undefined) ? '' : durText(Math.round(Number(m))); };
         h += '<div class="stat-grid">' +
+          tile(sm.diapersPerDay, 'Günlük ort. bez değişimi') +
           tile(sm.wetPerDay, 'Günlük ort. ıslak bez') +
           tile(sm.dirtyPerDay, 'Günlük ort. kirli bez') +
           tile(sm.feedsPerDay, 'Günlük ort. beslenme') +
-          tile(sm.avgGapH === '' ? '' : sm.avgGapH + ' sa', 'Ort. beslenme aralığı') +
-          tile(sm.breastMinPerDay + ' dk', 'Günlük ort. emzirme') +
-          tile(sm.leftTotal + ' / ' + sm.rightTotal, 'Toplam Sol / Sağ (dk)') +
+          tile(dur(sm.avgGapMin), 'Ort. beslenme aralığı') +
+          tile(dur(sm.maxGapMin), 'En uzun beslenme aralığı') +
+          tile(dur(sm.breastMinPerDay), 'Günlük ort. emzirme süresi') +
+          tile(dur(sm.leftTotal) + ' / ' + dur(sm.rightTotal), 'Toplam emzirme Sol / Sağ') +
           tile(sm.mamaMlPerDay + ' ml', 'Günlük ort. mama') +
           tile(sm.sutMlPerDay + ' ml', 'Günlük ort. sağılmış süt') +
           '</div>';
-        if (sm.maxGapH !== '') {
-          h += '<div class="report-muted" style="margin:-4px 2px 12px;">En uzun beslenme aralığı: <b>' + esc(sm.maxGapH) + ' saat</b></div>';
-        }
+        h += renderTimelines(rep);
 
         // Uyarılar
         h += '<div class="report-section"><h3>⚠️ Dikkat Edilecekler</h3>';
@@ -2024,16 +2119,17 @@
         h += '</div>';
 
         // Günlük tablo
-        var cols = [['date', 'Tarih'], ['wet', 'Islak'], ['dirty', 'Kirli'], ['feeds', 'Beslenme'], ['breastFeeds', 'Emzirme'],
-                    ['breastMin', 'Emz. dk'], ['left', 'Sol'], ['right', 'Sağ'], ['mamaMl', 'Mama ml'], ['sutMl', 'Süt ml'],
-                    ['avgGapH', 'Ort. aralık (sa)'], ['maxGapH', 'En uzun (sa)']];
+        var cols = [['date', 'Tarih'], ['diapers', 'Toplam bez'], ['wet', 'Islak'], ['dirty', 'Kirli'], ['feeds', 'Beslenme'],
+                    ['breastFeeds', 'Emzirme'], ['breastMin', 'Emzirme süresi', 1], ['left', 'Sol', 1], ['right', 'Sağ', 1],
+                    ['mamaMl', 'Mama ml'], ['sutMl', 'Süt ml'], ['avgGapMin', 'Ort. aralık', 1], ['maxGapMin', 'En uzun aralık', 1]];
         h += '<div class="report-section"><h3>📅 Günlük Döküm</h3><div class="table-scroll"><table class="report-table"><thead><tr>' +
              cols.map(function(c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>';
         rep.days.forEach(function(d) {
-          var empty = !d.wet && !d.dirty && !d.feeds;
+          var empty = !d.diapers && !d.feeds;
           h += '<tr' + (empty ? ' class="empty"' : '') + '>' + cols.map(function(c) {
             var v = d[c[0]];
             if (c[0] !== 'date' && (v === 0 || v === '')) v = '–';
+            else if (c[2]) v = durText(Math.round(Number(v)));
             return '<td>' + esc(v) + '</td>';
           }).join('') + '</tr>';
         });

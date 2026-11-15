@@ -1,6 +1,6 @@
 // Basit servis çalışanı: önce ağ, ağ yoksa son kaydedilen kopya.
 // Böylece güncellemeler hemen gelir, internet kesikken uygulama yine açılır.
-var CACHE = 'bebek-takip-v8';
+var CACHE = 'bebek-takip-v9';
 var SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', function(e) {

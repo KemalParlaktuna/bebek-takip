@@ -172,6 +172,7 @@
     .tl-wrap { margin-bottom: 4px; }
     .tl-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: #52514e; }
     .tl-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .tl-legend-group { font-weight: 700; color: #0b0b0b; }
     @media print {
       .tl-week-title { break-after: avoid; }
       .tl-wrap { break-inside: avoid; }
@@ -1981,7 +1982,7 @@
       /* ---- Günlük zaman çizelgesi (her gün 24 saatlik bir satır, haftalık grafikler) ---- */
 
       var TL = {
-        meme:   { color: '#2a78d6', label: 'Emzirme (çubuk uzunluğu = süre)' },
+        meme:   { color: '#2a78d6', label: 'Emzirme (uzunluk = süre)' },
         bottle: { color: '#eb6834', label: 'Biberon (mama / sağılmış süt)' },
         wet:    { color: '#1baf7a', label: 'Islak bez (çiş)' },
         dirty:  { color: '#eda100', label: 'Kirli bez (kaka)' },
@@ -1992,15 +1993,11 @@
 
       function hhmm(m) { m = Math.max(0, Math.min(1439, Math.round(m))) ; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
 
-      // Bez işaretleri farklı şekillerle de ayrışır (renk körlüğü ve siyah-beyaz baskı için)
+      // Kategori = şekil (beslenme: dikdörtgen, bez: daire); kategori içindeki tür = renk
       function tlShape(t, cx, cy) {
-        var c = TL[t].color, r = 5.5;
-        if (t === 'wet') return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
-        if (t === 'dirty') return '<rect x="' + (cx - r) + '" y="' + (cy - r) + '" width="' + (2 * r) + '" height="' + (2 * r) + '" rx="2" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
-        if (t === 'both') return '<path d="M' + cx + ' ' + (cy - r - 1.5) + ' L' + (cx + r + 1.5) + ' ' + cy + ' L' + cx + ' ' + (cy + r + 1.5) + ' L' + (cx - r - 1.5) + ' ' + cy + ' Z" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
-        if (t === 'dry') return '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 1) + '" fill="#fff" stroke="' + c + '" stroke-width="2"/>';
-        // biberon: üçgen
-        return '<path d="M' + cx + ' ' + (cy - r - 1) + ' L' + (cx + r + 1) + ' ' + (cy + r) + ' L' + (cx - r - 1) + ' ' + (cy + r) + ' Z" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+        var c = TL[t].color;
+        if (t === 'bottle') return '<rect x="' + (cx - 4) + '" y="' + (cy - 7) + '" width="8" height="14" rx="2" fill="' + c + '" stroke="#fff" stroke-width="1"/>';
+        return '<circle cx="' + cx + '" cy="' + cy + '" r="5.5" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
       }
 
       function timelineSvg(days, events) {
@@ -2036,12 +2033,14 @@
       }
 
       function timelineLegend() {
-        return '<div class="tl-legend">' + Object.keys(TL).map(function(k) {
+        var item = function(k) {
           var sw = k === 'meme'
-            ? '<svg width="22" height="14"><rect x="1" y="2" width="20" height="10" rx="2" fill="' + TL.meme.color + '"/></svg>'
-            : '<svg width="16" height="16">' + tlShape(k, 8, 8) + '</svg>';
+            ? '<svg width="22" height="14"><rect x="1" y="1" width="20" height="12" rx="2" fill="' + TL.meme.color + '"/></svg>'
+            : '<svg width="14" height="16">' + tlShape(k, 7, 8) + '</svg>';
           return '<span class="tl-legend-item">' + sw + esc(TL[k].label) + '</span>';
-        }).join('') + '</div>';
+        };
+        return '<div class="tl-legend"><span class="tl-legend-group">Beslenme (dikdörtgen):</span>' + item('meme') + item('bottle') + '</div>' +
+               '<div class="tl-legend"><span class="tl-legend-group">Bez (daire):</span>' + item('wet') + item('dirty') + item('both') + item('dry') + '</div>';
       }
 
       function renderTimelines(rep) {

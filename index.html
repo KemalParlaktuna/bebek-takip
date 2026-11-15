@@ -626,6 +626,7 @@
     }
 
     /* MODAL POPUPLAR */
+    .plan-back { display: block; width: 100%; margin-top: 10px; padding: 10px; background: none; border: none; color: #52514e; font-size: 14px; text-decoration: underline; cursor: pointer; font-family: inherit; }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -1602,6 +1603,7 @@
         <button type="button" class="modal-btn cancel" id="btnPlanSkip">Planlamadan Kaydet</button>
         <button type="button" class="modal-btn confirm" id="btnPlanSave">Planla ve Kaydet</button>
       </div>
+      <button type="button" class="plan-back" id="btnPlanBack">← Vazgeç, forma dön (kaydetme)</button>
     </div>
   </div>
 
@@ -1917,8 +1919,13 @@
         'report':  { el: 'viewReport',    title: 'Doktor Raporu',     status: false }
       };
 
-      function switchTab(name) {
+      var currentTab = 'new';
+      function switchTab(name, fromHistory) {
         if (!VIEWS[name]) name = 'new';
+        if (!fromHistory && name !== currentTab) {
+          try { history.pushState({ tab: name }, ''); } catch (e) {}
+        }
+        currentTab = name;
         for (var k in VIEWS) $(VIEWS[k].el).classList.toggle('hidden', k !== name);
         var items = document.querySelectorAll('[data-nav]');
         for (var i = 0; i < items.length; i++) items[i].classList.toggle('active', items[i].getAttribute('data-nav') === name);
@@ -3378,6 +3385,7 @@
           if (e.target && e.target.id === 'feedModalBackdrop') { closeFeedModal(); return; }
           if (e.target && e.target.id === 'detailModalBackdrop') { closeDetailModal(); return; }
           if (e.target && e.target.id === 'navOverlay') { closeNav(); return; }
+          if (e.target && e.target.id === 'planModalBackdrop') { cancelPlan(); return; }
           if (e.target && e.target.getAttribute && e.target.getAttribute('data-lightbox')) { openLightbox(e.target.src); return; }
           if (e.target && (e.target.id === 'photoLightbox' || e.target.id === 'lightboxImg')) { closeLightbox(); return; }
 
@@ -3411,6 +3419,7 @@
           }
           if (target.id === 'btnPlanSave') { finishPlan(true); return; }
           if (target.id === 'btnPlanSkip') { finishPlan(false); return; }
+          if (target.id === 'btnPlanBack') { cancelPlan(); return; }
           if (target.hasAttribute('data-nav')) { switchTab(target.getAttribute('data-nav')); return; }
           if (target.id === 'btnLoadReport') { loadReport(); return; }
           if (target.id === 'btnPrintReport') { window.print(); return; }
@@ -3570,7 +3579,27 @@
         }
       });
 
+      document.addEventListener('click', saveDraftSoon);
+      document.addEventListener('change', saveDraftSoon);
+      document.addEventListener('pagehide', saveDraftNow);
+      document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') saveDraftNow(); });
+      window.addEventListener('popstate', function(e) {
+        // Android geri tuşu: önce açık pencere/menüyü kapat, sonra önceki sekmeye dön
+        closeNav();
+        if (anyModalOpen()) {
+          if (openModals.planModalBackdrop) cancelPlan();
+          if (openModals.timeModalBackdrop) closeTimeModal();
+          if (openModals.feedModalBackdrop) closeFeedModal();
+          if (openModals.detailModalBackdrop) closeDetailModal();
+          try { history.pushState({ tab: currentTab }, ''); } catch (err) {}
+          return;
+        }
+        var tab = (e.state && e.state.tab) || 'new';
+        switchTab(tab, true);
+      });
+
       document.addEventListener('input', function(e) {
+        saveDraftSoon();
         if (e.target.id === 'olayTarih' || e.target.id === 'editTarih' || e.target.id === 'reportStart' || e.target.id === 'reportEnd') syncDateText(e.target.id);
       });
 
@@ -3596,40 +3625,134 @@
         gaz: '', kusma: '', neOlduSecimi: '', ilacSecimi: 'D Vitamini (3 damla)'
       };
 
-      // Kayıttan sonra formu sayfayı yenilemeden baştaki haline getirir
-      function resetForm() {
-        state.formId = newId();
-        for (var key in CHIP_DEFAULTS) state[key] = CHIP_DEFAULTS[key];
-        state.feedItems = [];
-        state.midGas = {};
-        state.editingFeedIdx = -1;
+      // Her kayıt türünün kendi alanları: biri kaydedilince diğerlerinin taslağı korunur
+      var TYPE_FIELDS = {
+        'Bez':      { chips: ['bezDurumu', 'pisik', 'pisikKremi', 'kakaMiktari', 'kakaRengi', 'kakaKivami'], texts: ['kakaRengiDigerText', 'bezNot'] },
+        'Beslenme': { chips: ['gaz', 'kusma'], texts: ['beslenmeNot'] },
+        'Diğer':    { chips: ['neOlduSecimi', 'ilacSecimi'], texts: ['digerOlayText', 'ates', 'digerNot', 'ilacDigerText'] }
+      };
+      var TYPE_SECTION = { 'Bez': 'secBez', 'Beslenme': 'secBeslenme', 'Diğer': 'secDiger' };
 
-        var groups = document.querySelectorAll('#viewNewRecord [data-group]');
-        for (var g = 0; g < groups.length; g++) {
-          var def = CHIP_DEFAULTS[groups[g].getAttribute('data-group')] || '';
-          var btns = groups[g].getElementsByTagName('button');
-          for (var b = 0; b < btns.length; b++) {
-            btns[b].classList.toggle('active', def !== '' && btns[b].getAttribute('data-val') === def);
-          }
+      function chipGroupEl(key) { return document.querySelector('#viewNewRecord [data-group="' + key + '"]'); }
+
+      function setChipValue(key, val) {
+        state[key] = val;
+        var g = chipGroupEl(key);
+        if (!g) return;
+        var btns = g.getElementsByTagName('button');
+        for (var b = 0; b < btns.length; b++) btns[b].classList.toggle('active', val !== '' && btns[b].getAttribute('data-val') === val);
+      }
+
+      // Seçimlere göre açılıp kapanan alt kutuları state ile eşitler
+      function syncSubBoxes() {
+        handleBezDurumu(state.bezDurumu);
+        handleKakaMiktari(state.kakaMiktari);
+        handleKakaRengi(state.kakaRengi);
+        handleDigerChoice(state.neOlduSecimi);
+        $('ilacDigerText').classList.toggle('hidden', state.ilacSecimi !== 'Diğer');
+      }
+
+      function clearTypeFields(type) {
+        var f = TYPE_FIELDS[type];
+        f.chips.forEach(function(k) { setChipValue(k, CHIP_DEFAULTS[k]); });
+        f.texts.forEach(function(id) { $(id).value = ''; });
+        if (type === 'Beslenme') { state.feedItems = []; state.midGas = {}; state.editingFeedIdx = -1; renderFeedItems(); }
+        if (type === 'Bez') clearPhoto();
+      }
+
+      // Bu türde yarım kalmış (varsayılandan farklı) bir şey var mı?
+      function typeHasDraft(type) {
+        var f = TYPE_FIELDS[type];
+        if (type === 'Beslenme' && state.feedItems.length) return true;
+        if (type === 'Bez' && state.photoBase64) return true;
+        for (var i = 0; i < f.chips.length; i++) if (state[f.chips[i]] !== CHIP_DEFAULTS[f.chips[i]]) return true;
+        for (var j = 0; j < f.texts.length; j++) if ($(f.texts[j]).value.trim()) return true;
+        return false;
+      }
+
+      function selectType(type) {
+        setChipValue('kayitTuru', type);
+        if (type) handleMainType(type);
+        else {
+          ['secBez', 'secBeslenme', 'secDiger', 'submitBar'].forEach(function(id) { $(id).classList.add('hidden'); });
         }
+      }
 
-        ['secBez', 'secBeslenme', 'secDiger', 'secKaka', 'secKakaDetailFields', 'boxKakaRengiDiger',
-         'boxIlac', 'boxAtes', 'boxDigerOlayText', 'ilacDigerText', 'submitBar'].forEach(function(id) {
-          $(id).classList.add('hidden');
-        });
-        ['kakaRengiDigerText', 'bezNot', 'beslenmeNot', 'digerOlayText', 'ates', 'digerNot', 'ilacDigerText'].forEach(function(id) {
-          $(id).value = '';
-        });
-
-        renderFeedItems();
-        clearPhoto();
-        setNow();
+      // Kayıttan sonra: sadece kaydedilen türü temizle; başka türde taslak varsa ona dön
+      function resetForm(savedType) {
+        state.formId = newId();
+        var types = savedType ? [savedType] : Object.keys(TYPE_FIELDS);
+        types.forEach(clearTypeFields);
+        syncSubBoxes();
+        var pending = '';
+        ['Beslenme', 'Bez', 'Diğer'].forEach(function(t) { if (!pending && t !== savedType && typeHasDraft(t)) pending = t; });
+        selectType(pending);
+        if (pending === 'Beslenme' && state.feedItems.length) syncMainTimeToFirstItem();
+        else setNow();
 
         var btn = $('submitBtn');
         btn.disabled = false;
         btn.textContent = 'KAYDET';
         switchTab('new');
         window.scrollTo(0, 0);
+        saveDraftNow();
+        if (pending) setTimeout(function() { showToast('Yarım kalan ' + pending.toLowerCase() + ' kaydınız duruyor ✍️'); }, 2200);
+      }
+
+      /* ---------------- TASLAK (telefonda saklanır) ---------------- */
+
+      var DRAFT_KEY = 'bebek_taslak_v1', DRAFT_MAX_AGE = 12 * 3600 * 1000, draftTimer = null;
+
+      function saveDraftNow() {
+        clearTimeout(draftTimer);
+        var d = { v: 1, at: Date.now(), kayitTuru: state.kayitTuru, chips: {}, texts: {},
+                  feedItems: state.feedItems, midGas: state.midGas,
+                  timeTouched: state.timeTouched, date: $('olayTarih').value, h: state.selectedHour, m: state.selectedMinute,
+                  photo: state.photoBase64, photoName: state.photoName };
+        var empty = !state.kayitTuru;
+        Object.keys(TYPE_FIELDS).forEach(function(t) {
+          TYPE_FIELDS[t].chips.forEach(function(k) { d.chips[k] = state[k]; });
+          TYPE_FIELDS[t].texts.forEach(function(id) { d.texts[id] = $(id).value; });
+          if (typeHasDraft(t)) empty = false;
+        });
+        try {
+          if (empty) { localStorage.removeItem(DRAFT_KEY); return; }
+          try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); }
+          catch (e) { d.photo = ''; localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } // fotoğraf sığmazsa onsuz sakla
+        } catch (e) {}
+      }
+
+      function saveDraftSoon() {
+        clearTimeout(draftTimer);
+        draftTimer = setTimeout(saveDraftNow, 400);
+      }
+
+      function restoreDraft() {
+        var d = null;
+        try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) {}
+        if (!d || d.v !== 1 || Date.now() - d.at > DRAFT_MAX_AGE) {
+          try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+          return;
+        }
+        Object.keys(d.chips || {}).forEach(function(k) { if (k in CHIP_DEFAULTS) setChipValue(k, d.chips[k] || ''); });
+        Object.keys(d.texts || {}).forEach(function(id) { if ($(id)) $(id).value = d.texts[id] || ''; });
+        state.feedItems = d.feedItems || [];
+        state.midGas = d.midGas || {};
+        renderFeedItems();
+        syncSubBoxes();
+        if (d.photo) {
+          state.photoBase64 = d.photo; state.photoName = d.photoName || 'bez.jpg';
+          $('photoPreviewImg').src = d.photo;
+          $('photoFileName').textContent = state.photoName;
+          $('photoPreviewWrap').classList.remove('hidden');
+        }
+        selectType(d.kayitTuru || '');
+        if (d.timeTouched && d.date) {
+          $('olayTarih').value = d.date; syncDateText('olayTarih');
+          state.selectedHour = d.h; state.selectedMinute = d.m; state.timeTouched = true;
+          updateTriggerButton();
+        }
+        if (d.kayitTuru) showToast('Yarım kalan kaydınız geri yüklendi ✍️');
       }
 
       /* ---------------- SONRAKİ BESLENME PLANI ---------------- */
@@ -3668,6 +3791,12 @@
         $('planBaseTime').textContent = clockText(plan.base);
         renderPlan();
         showModal('planModalBackdrop');
+      }
+
+      // Yanlışlıkla KAYDET'e basıldıysa: hiçbir şey kaydetmeden forma dön
+      function cancelPlan() {
+        plan.payload = null;
+        hideModal('planModalBackdrop');
       }
 
       function finishPlan(withPlan) {
@@ -3793,7 +3922,7 @@
 
         runApi().withSuccessHandler(function() {
           showToast('Kaydedildi 👶 Teşekkürler!');
-          resetForm();
+          resetForm(payload.kayitTuru);
           loadStatus();
         }).withFailureHandler(function(err) {
           // formId aynı kalır: tekrar denenirse çift kayıt oluşmaz
@@ -3808,6 +3937,9 @@
       buildWheel($('wheelHour'), 24, true);
       buildWheel($('wheelMinute'), 60, false);
       setNow();
+      // Geri tuşu için alta bir koruma kaydı: pencere açıkken geri tuşu uygulamadan çıkmasın, pencereyi kapatsın
+      try { history.replaceState({ tab: 'new', root: true }, ''); history.pushState({ tab: 'new' }, ''); } catch (e) {}
+      restoreDraft();
       if (!CFG.API_URL || !CFG.CLIENT_ID) {
         showError('Kurulum eksik: config.js içinde API_URL ve CLIENT_ID doldurulmalı.');
       } else if (getSession()) {

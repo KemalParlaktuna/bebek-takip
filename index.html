@@ -1673,6 +1673,18 @@
     </div>
   </div>
 
+  <!-- PİŞİK KREMİ HATIRLATMASI (uygulama açılınca) -->
+  <div id="creamModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title">🧴 Pişik kremi zamanı</div>
+      <div class="plan-sub" id="creamModalText">Bir sonraki bez değişiminde pişik kremi sürün.</div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel" id="btnCreamOk">Tamam</button>
+        <button type="button" class="modal-btn confirm" id="btnCreamDiaper">Bez kaydı aç</button>
+      </div>
+    </div>
+  </div>
+
   <div id="feedModalBackdrop" class="modal-backdrop hidden">
     <div class="modal-box">
       <div class="modal-title" id="feedModalTitle">Beslenme Öğesi Ekle</div>
@@ -3249,8 +3261,32 @@
         updateTriggerButton();
       }
 
+      // Uygulama açıldığında / arka plandan dönünce: krem sırası geldiyse pencereyle hatırlat
+      var creamCheckPending = true, lastCreamPopup = 0;
+      function maybeShowCreamPopup(res) {
+        if (!creamCheckPending) return;
+        creamCheckPending = false;
+        var count = Number(res.diapersSinceCream || 0);
+        if (!res.hasAnyDiaper || count < 2) return;
+        if (Date.now() - lastCreamPopup < 15 * 60000 || anyModalOpen()) return;
+        lastCreamPopup = Date.now();
+        $('creamModalText').textContent = 'Son kremden beri ' + count + ' bez krem sürülmeden değişti' +
+          (res.lastDiaperTime ? ' (son bez: ' + res.lastDiaperTime + ')' : '') + '. Bir sonraki bez değişiminde pişik kremi sürün.';
+        showModal('creamModalBackdrop');
+      }
+
+      // "Bez kaydı aç": yeni kayıt formunu Bez + krem sürüldü olarak hazırla
+      function startCreamDiaper() {
+        switchTab('new');
+        selectType('Bez');
+        setChipValue('pisikKremi', 'Evet');
+        saveDraftNow();
+        window.scrollTo(0, 0);
+      }
+
       function renderStatus(res) {
         if (!res) return;
+        setTimeout(function() { maybeShowCreamPopup(res); }, 300);
         var feedEl = $('stFeed'), feedSub = $('stFeedSub');
         if (res.lastFeedTime) {
           feedEl.textContent = res.lastFeedTime + (res.feedAgo ? ' (' + res.feedAgo + ')' : '');
@@ -3461,6 +3497,7 @@
           if (e.target && e.target.id === 'detailModalBackdrop') { closeDetailModal(); return; }
           if (e.target && e.target.id === 'navOverlay') { closeNav(); return; }
           if (e.target && e.target.id === 'planModalBackdrop') { cancelPlan(); return; }
+          if (e.target && e.target.id === 'creamModalBackdrop') { hideModal('creamModalBackdrop'); return; }
           if (e.target && e.target.getAttribute && e.target.getAttribute('data-lightbox')) { openLightbox(e.target.src); return; }
           if (e.target && (e.target.id === 'photoLightbox' || e.target.id === 'lightboxImg')) { closeLightbox(); return; }
 
@@ -3495,6 +3532,8 @@
           if (target.id === 'btnPlanSave') { finishPlan(true); return; }
           if (target.id === 'btnPlanSkip') { finishPlan(false); return; }
           if (target.id === 'btnPlanBack') { cancelPlan(); return; }
+          if (target.id === 'btnCreamOk') { hideModal('creamModalBackdrop'); return; }
+          if (target.id === 'btnCreamDiaper') { hideModal('creamModalBackdrop'); startCreamDiaper(); return; }
           if (target.id === 'btnPushEnable') { pushEnable(); return; }
           if (target.id === 'btnPushDisable') { pushDisable(); return; }
           if (target.id === 'btnPushTest') { pushTest(); return; }
@@ -3667,6 +3706,7 @@
         closeNav();
         if (anyModalOpen()) {
           if (openModals.planModalBackdrop) cancelPlan();
+          if (openModals.creamModalBackdrop) hideModal('creamModalBackdrop');
           if (openModals.timeModalBackdrop) closeTimeModal();
           if (openModals.feedModalBackdrop) closeFeedModal();
           if (openModals.detailModalBackdrop) closeDetailModal();
@@ -3693,6 +3733,7 @@
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState !== 'visible') return;
         if (!state.timeTouched && Date.now() - state.lastAutoTime > 60000) setNow(true);
+        creamCheckPending = true;
         loadStatus();
       });
 

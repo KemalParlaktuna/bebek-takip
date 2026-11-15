@@ -168,6 +168,7 @@
     .timeline-svg .tl-axis { font-size: 11px; fill: #52514e; font-family: inherit; }
     .timeline-svg .tl-day { font-size: 13px; font-weight: 700; fill: #0b0b0b; font-family: inherit; }
     .timeline-svg .tl-date { font-size: 11px; fill: #52514e; font-family: inherit; }
+    .timeline-svg .tl-row { font-size: 10px; fill: #8a8984; font-family: inherit; }
     .tl-week-title { font-size: 14px; font-weight: 800; margin: 12px 0 6px; }
     .tl-wrap { margin-bottom: 4px; }
     .tl-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: #52514e; }
@@ -1185,24 +1186,24 @@
           <button type="button" class="chip" data-val="Çok (taşma)">Çok (taşma)</button>
         </div>
 
+        <label class="sec-title" style="margin-top:14px;">Kaka Rengi</label>
+        <div class="chip-grid" data-group="kakaRengi">
+          <button type="button" class="chip" data-val="Hardal sarısı">🟡 Hardal sarısı</button>
+          <button type="button" class="chip" data-val="Siyah-yeşil (mekonyum)">⚫ Mekonyum</button>
+          <button type="button" class="chip" data-val="Yeşil">🟢 Yeşil</button>
+          <button type="button" class="chip" data-val="Kahverengi">🟤 Kahverengi</button>
+          <button type="button" class="chip" data-val="Turuncu">🟠 Turuncu</button>
+          <button type="button" class="chip danger" data-val="Beyaz/gri/soluk">⚪ Beyaz/gri/soluk</button>
+          <button type="button" class="chip danger" data-val="Kırmızı/kanlı">🔴 Kırmızı/kanlı</button>
+          <button type="button" class="chip" data-val="Diğer">📝 Diğer</button>
+        </div>
+
+        <div id="boxKakaRengiDiger" class="sub-box hidden">
+          <label class="sec-title">Kaka Rengi (Elle Yazın)</label>
+          <input type="text" id="kakaRengiDigerText" placeholder="Rengi yazın...">
+        </div>
+
         <div id="secKakaDetailFields" class="hidden">
-          <label class="sec-title" style="margin-top:14px;">Kaka Rengi</label>
-          <div class="chip-grid" data-group="kakaRengi">
-            <button type="button" class="chip" data-val="Hardal sarısı">🟡 Hardal sarısı</button>
-            <button type="button" class="chip" data-val="Siyah-yeşil (mekonyum)">⚫ Mekonyum</button>
-            <button type="button" class="chip" data-val="Yeşil">🟢 Yeşil</button>
-            <button type="button" class="chip" data-val="Kahverengi">🟤 Kahverengi</button>
-            <button type="button" class="chip" data-val="Turuncu">🟠 Turuncu</button>
-            <button type="button" class="chip danger" data-val="Beyaz/gri/soluk">⚪ Beyaz/gri/soluk</button>
-            <button type="button" class="chip danger" data-val="Kırmızı/kanlı">🔴 Kırmızı/kanlı</button>
-            <button type="button" class="chip" data-val="Diğer">📝 Diğer</button>
-          </div>
-
-          <div id="boxKakaRengiDiger" class="sub-box hidden">
-            <label class="sec-title">Kaka Rengi (Elle Yazın)</label>
-            <input type="text" id="kakaRengiDigerText" placeholder="Rengi yazın...">
-          </div>
-
           <label class="sec-title" style="margin-top:14px;">Kaka Kıvamı</label>
           <div class="chip-grid cols-3" data-group="kakaKivami">
             <button type="button" class="chip" data-val="Sulu">Sulu</button>
@@ -1984,26 +1985,57 @@
       var TL = {
         meme:   { color: '#2a78d6', label: 'Emzirme' },
         mama:   { color: '#eda100', label: 'Mama' },
-        sut:    { color: '#e87ba4', label: 'Sağılmış süt' },
-        wet:    { color: '#1baf7a', label: 'Islak bez (çiş)' },
-        dirty:  { color: '#eb6834', label: 'Kirli bez (kaka)' },
-        both:   { color: '#6250d6', label: 'Çiş + kaka' },
-        dry:    { color: '#8a8984', label: 'Kuru bez' }
+        sut:    { color: '#e87ba4', label: 'Sağılmış süt' }
       };
+      // Kaka işaretinin dolgusu = gerçek kaka rengi; şekli = miktar
+      var POOP_COLORS = [
+        ['Hardal sarısı', '#e3b505'],
+        ['Siyah-yeşil (mekonyum)', '#24321f', 'Mekonyum'],
+        ['Yeşil', '#3f8f2f'],
+        ['Kahverengi', '#8a5a2b'],
+        ['Turuncu', '#f07d1a'],
+        ['Beyaz/gri/soluk', '#e6e4de'],
+        ['Kırmızı/kanlı', '#d12a2a'],
+        ['Diğer', '#8e6cc7']
+      ];
+      var POOP_AMOUNTS = [['Az (leke)', 'Az (leke)'], ['Orta', 'Orta'], ['Çok (taşma)', 'Çok (taşma)']];
+      var PEE_COLOR = '#1baf7a', NONE_COLOR = '#8a8984', INK = '#3a3a36';
       var WEEKDAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
       function hhmm(m) { m = Math.max(0, Math.min(1439, Math.round(m))) ; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
 
-      // Kategori = şekil (beslenme: dikdörtgen, bez: daire); kategori içindeki tür = renk
-      function tlShape(t, cx, cy) {
-        var c = TL[t].color;
-        if (t === 'mama' || t === 'sut') return '<rect x="' + (cx - 4) + '" y="' + (cy - 7) + '" width="8" height="14" rx="2" fill="' + c + '" stroke="#fff" stroke-width="1"/>';
-        return '<circle cx="' + cx + '" cy="' + cy + '" r="5.5" fill="' + c + '" stroke="#fff" stroke-width="2"/>';
+      function poopColorKey(col) {
+        col = String(col || '');
+        if (!col) return '';
+        if (col.indexOf('Diğer') === 0) return 'Diğer';
+        for (var i = 0; i < POOP_COLORS.length; i++) if (POOP_COLORS[i][0] === col) return col;
+        return 'Diğer';
+      }
+      function poopFill(key) {
+        for (var i = 0; i < POOP_COLORS.length; i++) if (POOP_COLORS[i][0] === key) return POOP_COLORS[i][1];
+        return '#ffffff';   // renk girilmemiş: içi boş
+      }
+      // Miktar = şekil: az (leke) küçük daire, orta kare, çok (taşma) üçgen
+      function poopShape(amt, fill, cx, cy) {
+        var st = ' fill="' + fill + '" stroke="' + INK + '" stroke-width="1.2"' + (fill === '#ffffff' ? ' stroke-dasharray="2 1.5"' : '');
+        if (amt === 'Çok (taşma)') return '<path d="M' + cx + ' ' + (cy - 7) + ' L' + (cx + 7.5) + ' ' + (cy + 6) + ' L' + (cx - 7.5) + ' ' + (cy + 6) + ' Z"' + st + ' stroke-linejoin="round"/>';
+        if (amt === 'Orta') return '<rect x="' + (cx - 5) + '" y="' + (cy - 5) + '" width="10" height="10" rx="1.5"' + st + '/>';
+        return '<circle cx="' + cx + '" cy="' + cy + '" r="4.5"' + st + '/>';
+      }
+      function tickMark(cx, cy) {
+        return '<path d="M' + (cx - 5) + ' ' + cy + ' L' + (cx - 1.5) + ' ' + (cy + 4) + ' L' + (cx + 5.5) + ' ' + (cy - 4.5) + '" fill="none" stroke="' + PEE_COLOR + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+      }
+      function crossMark(cx, cy) {
+        return '<path d="M' + (cx - 4) + ' ' + (cy - 4) + ' L' + (cx + 4) + ' ' + (cy + 4) + ' M' + (cx + 4) + ' ' + (cy - 4) + ' L' + (cx - 4) + ' ' + (cy + 4) + '" fill="none" stroke="' + NONE_COLOR + '" stroke-width="2.2" stroke-linecap="round"/>';
+      }
+      function bottleShape(t, cx, cy) {
+        return '<rect x="' + (cx - 4) + '" y="' + (cy - 7) + '" width="8" height="14" rx="2" fill="' + TL[t].color + '" stroke="#fff" stroke-width="1"/>';
       }
 
       // Sunucudan gelen olayları çizime hazırlar:
       // - aynı öğündeki sol/sağ emzirmeler tek mavi çubuk olur
       // - biberon kalemleri mama / sağılmış süt olarak ayrılır
+      // - bez değişimleri çiş ve kaka bilgisine ayrılır
       function prepareTimeline(events) {
         var out = [], byDay = {};
         events.forEach(function(e) {
@@ -2012,7 +2044,12 @@
           } else if (e.t === 'meme') {
             (byDay[e.day] = byDay[e.day] || []).push(e);
           } else {
-            out.push(e);
+            var wet = e.t === 'wet' || e.t === 'both', dirty = e.t === 'dirty' || e.t === 'both';
+            var ck = dirty ? poopColorKey(e.col) : '';
+            var amt = dirty ? (e.amt || 'Orta') : '';
+            var parts = [e.label || (dirty ? 'Kaka' : (wet ? 'Çiş' : 'Kuru'))];
+            if (dirty) parts.push('Miktar: ' + amt, 'Renk: ' + (e.col || 'girilmemiş'));
+            out.push({ day: e.day, m: e.m, t: 'bez', wet: wet, dirty: dirty, amt: amt, ck: ck, label: 'Bez — ' + parts.join(', ') });
           }
         });
         Object.keys(byDay).forEach(function(day) {
@@ -2037,9 +2074,9 @@
       }
 
       function timelineSvg(days, events) {
-        var LW = 78, W = 624, RH = 44, TOP = 22, H = TOP + days.length * RH + 6;
+        var LW = 78, W = 624, RH = 62, TOP = 22, H = TOP + days.length * RH + 6;
         var X = function(m) { return LW + Math.max(0, Math.min(1440, m)) / 1440 * W; };
-        var o = '<svg class="timeline-svg" viewBox="0 0 ' + (LW + W + 10) + ' ' + H + '" width="' + (LW + W + 10) + '" height="' + H + '" role="img" aria-label="Günlük beslenme ve bez zaman çizelgesi">';
+        var o = '<svg class="timeline-svg" viewBox="0 0 ' + (LW + W + 10) + ' ' + H + '" width="' + (LW + W + 10) + '" height="' + H + '" role="img" aria-label="Günlük beslenme, kaka ve çiş zaman çizelgesi">';
         // saat ızgarası
         for (var hr = 0; hr <= 24; hr++) {
           var x = X(hr * 60), major = hr % 3 === 0;
@@ -2047,43 +2084,64 @@
           if (major) o += '<text x="' + x + '" y="12" text-anchor="middle" class="tl-axis">' + pad2(hr) + '</text>';
         }
         days.forEach(function(d, i) {
-          var y0 = TOP + i * RH;
+          var y0 = TOP + i * RH, yFeed = y0 + 6, yPoop = y0 + 35, yPee = y0 + 52;
           var p = d.iso.split('-'), wd = WEEKDAYS[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
           if (i > 0) o += '<line x1="0" y1="' + y0 + '" x2="' + (LW + W) + '" y2="' + y0 + '" stroke="#e5e4df" stroke-width="1"/>';
           o += '<text x="4" y="' + (y0 + 18) + '" class="tl-day">' + wd + '</text>';
-          o += '<text x="4" y="' + (y0 + 33) + '" class="tl-date">' + p[2] + '.' + p[1] + '</text>';
-          // şeritler: üstte beslenme, altta bez
-          o += '<rect x="' + LW + '" y="' + (y0 + 6) + '" width="' + W + '" height="14" fill="#f6f6f3" rx="3"/>';
+          o += '<text x="4" y="' + (y0 + 32) + '" class="tl-date">' + p[2] + '.' + p[1] + '</text>';
+          o += '<text x="' + (LW - 6) + '" y="' + (yPoop + 4) + '" text-anchor="end" class="tl-row">kaka</text>';
+          o += '<text x="' + (LW - 6) + '" y="' + (yPee + 4) + '" text-anchor="end" class="tl-row">çiş</text>';
+          // şeritler: üstte beslenme, ortada kaka, en altta çiş
+          o += '<rect x="' + LW + '" y="' + yFeed + '" width="' + W + '" height="14" fill="#f6f6f3" rx="3"/>';
+          o += '<line x1="' + LW + '" y1="' + yPoop + '" x2="' + (LW + W) + '" y2="' + yPoop + '" stroke="#f0efeb" stroke-width="1"/>';
+          o += '<line x1="' + LW + '" y1="' + yPee + '" x2="' + (LW + W) + '" y2="' + yPee + '" stroke="#f0efeb" stroke-width="1"/>';
           var dayEv = events.filter(function(e) { return e.day === d.iso; });
-          dayEv.filter(function(e) { return e.t === 'meme'; }).forEach(function(e) {
-            var x1 = X(e.m), w = Math.max(3, X(e.m + (e.dur || 0)) - x1);
-            o += '<rect x="' + x1 + '" y="' + (y0 + 6) + '" width="' + w + '" height="14" rx="2" fill="' + TL.meme.color + '" stroke="#fff" stroke-width="1">' +
-                 '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title></rect>';
-          });
-          dayEv.filter(function(e) { return e.t !== 'meme'; }).forEach(function(e) {
-            var cy = (e.t === 'mama' || e.t === 'sut') ? y0 + 13 : y0 + 32;
-            o += '<g>' + tlShape(e.t, X(e.m), cy) + '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title></g>';
+          dayEv.forEach(function(e) {
+            var tip = '<title>' + esc(hhmm(e.m) + ' — ' + e.label) + '</title>', cx = X(e.m);
+            if (e.t === 'meme') {
+              var w = Math.max(3, X(e.m + (e.dur || 0)) - cx);
+              o += '<rect x="' + cx + '" y="' + yFeed + '" width="' + w + '" height="14" rx="2" fill="' + TL.meme.color + '" stroke="#fff" stroke-width="1">' + tip + '</rect>';
+            } else if (e.t === 'mama' || e.t === 'sut') {
+              o += '<g>' + bottleShape(e.t, cx, yFeed + 7) + tip + '</g>';
+            } else if (e.t === 'bez') {
+              var g = '<rect x="' + (cx - 8) + '" y="' + (yPoop - 10) + '" width="16" height="' + (yPee - yPoop + 20) + '" fill="transparent"/>';
+              g += e.dirty ? poopShape(e.amt, poopFill(e.ck), cx, yPoop) : (!e.wet ? crossMark(cx, yPoop) : '');
+              g += e.wet ? tickMark(cx, yPee) : crossMark(cx, yPee);
+              o += '<g>' + g + tip + '</g>';
+            }
           });
         });
         return o + '</svg>';
       }
 
-      function timelineLegend() {
-        var item = function(k) {
-          var sw = k === 'meme'
-            ? '<svg width="22" height="14"><rect x="1" y="1" width="20" height="12" rx="2" fill="' + TL.meme.color + '"/></svg>'
-            : '<svg width="14" height="16">' + tlShape(k, 7, 8) + '</svg>';
-          return '<span class="tl-legend-item">' + sw + esc(TL[k].label) + '</span>';
+      function timelineLegend(events) {
+        var item = function(svg, w, label) {
+          return '<span class="tl-legend-item"><svg width="' + w + '" height="16">' + svg + '</svg>' + esc(label) + '</span>';
         };
-        return '<div class="tl-legend"><span class="tl-legend-group">Beslenme (dikdörtgen):</span>' + item('meme') + item('mama') + item('sut') + '</div>' +
-               '<div class="tl-legend"><span class="tl-legend-group">Bez (daire):</span>' + item('wet') + item('dirty') + item('both') + item('dry') + '</div>';
+        var used = {}, noColor = false;
+        events.forEach(function(e) { if (e.t === 'bez' && e.dirty) { if (e.ck) used[e.ck] = 1; else noColor = true; } });
+        var colorItems = POOP_COLORS.filter(function(c) { return used[c[0]]; }).map(function(c) {
+          return item(poopShape('Orta', c[1], 8, 8), 16, c[2] || c[0]);
+        });
+        if (noColor) colorItems.push(item(poopShape('Orta', '#ffffff', 8, 8), 16, 'Renk girilmemiş'));
+        var h = '<div class="tl-legend"><span class="tl-legend-group">Beslenme:</span>' +
+                item('<rect x="1" y="2" width="20" height="12" rx="2" fill="' + TL.meme.color + '"/>', 22, TL.meme.label) +
+                item(bottleShape('mama', 7, 8), 14, TL.mama.label) + item(bottleShape('sut', 7, 8), 14, TL.sut.label) + '</div>';
+        h += '<div class="tl-legend"><span class="tl-legend-group">Kaka miktarı (şekil):</span>' +
+             POOP_AMOUNTS.map(function(a) { return item(poopShape(a[0], '#c9c7c0', 8, 8), 16, a[1]); }).join('') + '</div>';
+        if (colorItems.length) h += '<div class="tl-legend"><span class="tl-legend-group">Kaka rengi (dolgu):</span>' + colorItems.join('') + '</div>';
+        h += '<div class="tl-legend"><span class="tl-legend-group">Çiş:</span>' +
+             item(tickMark(8, 8), 16, 'Var') + item(crossMark(8, 8), 16, 'Yok') +
+             '<span class="tl-legend-group" style="margin-left:6px;">Kuru bez:</span>' +
+             '<span class="tl-legend-item">kaka ve çiş satırında ' + '<svg width="16" height="16">' + crossMark(8, 8) + '</svg></span></div>';
+        return h;
       }
 
       function renderTimelines(rep) {
         var days = rep.days || [], events = prepareTimeline(rep.timeline || []);
         if (!days.length) return '';
         var h = '<div class="report-section"><h3>🕒 Günlük Zaman Çizelgesi</h3>' +
-                '<div class="report-muted" style="margin-bottom:8px;">Her satır bir gün (00:00–24:00). Üst şerit beslenme, alt sıra bez değişimi. Telefonda grafiği sağa kaydırın; bilgisayarda bir işaretin üstüne gelince saati görünür.</div>';
+                '<div class="report-muted" style="margin-bottom:8px;">Her satır bir gün (00:00–24:00). Üst şerit beslenme, ortadaki satır kaka, en alttaki satır çiş (her bez değişimi bir işaret). Telefonda grafiği sağa kaydırın; bilgisayarda bir işaretin üstüne gelince saati görünür.</div>';
         for (var i = 0, w = 1; i < days.length; i += 7, w++) {
           var chunk = days.slice(i, i + 7);
           if (days.length > 7) {
@@ -2091,7 +2149,7 @@
           }
           h += '<div class="table-scroll tl-wrap">' + timelineSvg(chunk, events) + '</div>';
         }
-        return h + timelineLegend() + '</div>';
+        return h + timelineLegend(events) + '</div>';
       }
 
       // Rapordaki "Diğer" kayıtlarını okunur hale getirir: ne olduğu + ayrıntısı
@@ -3663,7 +3721,8 @@
         var hasPoop = isBez && (state.bezDurumu === 'Sadece kaka' || state.bezDurumu === 'Çiş + kaka');
         var needPoopDetails = hasPoop && (state.kakaMiktari !== 'Az (leke)');
         var finalKakaRengi = '', finalKakaKivami = '';
-        if (needPoopDetails) {
+        if (hasPoop) {
+          if (!state.kakaRengi) { alert('Lütfen kaka rengini seçin.'); return; }
           if (state.kakaRengi === 'Diğer') {
             var customColor = $('kakaRengiDigerText').value.trim();
             if (!customColor) { alert('Lütfen kaka rengini elle yazın.'); return; }
@@ -3671,8 +3730,8 @@
           } else {
             finalKakaRengi = state.kakaRengi;
           }
-          finalKakaKivami = state.kakaKivami;
         }
+        if (needPoopDetails) finalKakaKivami = state.kakaKivami;
 
         var finalNeOldu = '';
         if (isDiger) {

@@ -2753,14 +2753,17 @@
         var sure = parseInt($('modalSureInput').value, 10) || 0;
         var lines = [];
         if (sug.partial) {
-          lines.push('↩️ <b>' + sug.side + ' meme yarım kalmıştı</b> (' + sug.done + ' dk emzirildi, ~' + sug.remaining + ' dk kaldı).');
+          lines.push('↩️ <b>' + sug.side + ' meme önceki emzirmede yarım kalmıştı</b> (' + sug.done + ' dk emzirildi, ' +
+                     min + ' dk olması için ~' + sug.remaining + ' dk daha).');
         }
         var effective = sure + (sug.partial && side === sug.side ? sug.done : 0);
         if (effective < min) {
-          lines.push('<span class="warn">⏳ ' + side + ' memede toplam ' + effective + ' dk: en az ' + min +
-                     ' dk olmalı. Kısa kalırsa sonraki emzirme ' + side + ' memeyle başlar.</span>');
+          lines.push('<span class="warn">⏳ ' + side + ' memede toplam ' + effective + ' dk olacak, en az ' + min +
+                     ' dk olmalı. Böyle kaydederseniz sonraki emzirme yine ' + side + ' memeyle başlar.</span>');
         } else {
-          lines.push('<span class="ok">✓ ' + side + ' meme tamamlanıyor (toplam ' + effective + ' dk).</span>');
+          var other = side === 'Sol' ? 'Sağ' : 'Sol';
+          lines.push('<span class="ok">✓ ' + side + ' meme yeterince emzirilmiş olacak (toplam ' + effective +
+                     ' dk). Sonraki emzirme ' + other + ' memeyle başlar.</span>');
         }
         el.innerHTML = lines.join('<br>');
       }

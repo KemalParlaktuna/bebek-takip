@@ -1219,7 +1219,9 @@
           <label class="sec-title">İlaç / Damla Seçimi</label>
           <div class="chip-grid cols-1" data-group="ilacSecimi">
             <button type="button" class="chip active" data-val="D Vitamini (3 damla)">💧 D Vitamini (3 damla)</button>
+            <button type="button" class="chip" data-val="Diğer">📝 Başka ilaç (elle yaz)</button>
           </div>
+          <input type="text" id="ilacDigerText" class="hidden" style="margin-top:10px;" placeholder="İlaç adı ve dozu, örn: Parol şurup 2.5 ml">
         </div>
 
         <div id="boxAtes" class="sub-box hidden">
@@ -1472,15 +1474,14 @@
             <label>Olay Açıklaması (Elle Yazın)</label>
             <input type="text" id="editNeOlduInput" placeholder="Ne olduğunu yazın...">
           </div>
-          <div class="edit-grid-2">
-            <div class="edit-field">
-              <label>İlaç / Doz</label>
-              <input type="text" id="editIlac">
-            </div>
-            <div class="edit-field">
-              <label>Ateş (°C)</label>
-              <input type="number" id="editAtes" step="0.1" inputmode="decimal">
-            </div>
+          <div class="edit-field hidden" id="editBoxIlac">
+            <label>İlaç / Damla</label>
+            <select id="editIlacSelect"></select>
+            <input type="text" id="editIlacInput" class="hidden" style="margin-top:8px;" placeholder="İlaç adı ve dozu">
+          </div>
+          <div class="edit-field hidden" id="editBoxAtes">
+            <label>Ateş (°C)</label>
+            <input type="number" id="editAtes" step="0.1" inputmode="decimal" placeholder="Örn: 36.8">
           </div>
           <div class="edit-field">
             <label>Not</label>
@@ -2323,8 +2324,9 @@
             $('editNeOlduInput').value = '';
             $('editBoxDigerOlay').classList.add('hidden');
           }
-          $('editIlac').value = r.med || '';
+          fillEditMedSelect(r.med || '');
           $('editAtes').value = r.temp === '' ? '' : r.temp;
+          toggleEditDigerFields();
           $('editDigerNot').value = r.note || '';
         }
       }
@@ -2383,8 +2385,16 @@
           } else {
             p.neOldu = oSel;
           }
-          p.ilac = $('editIlac').value.trim();
-          p.ates = $('editAtes').value;
+          p.ilac = '';
+          p.ates = '';
+          if (oSel === 'İlaç/damla verildi') {
+            var mSel = $('editIlacSelect').value;
+            p.ilac = mSel === 'Diğer' ? $('editIlacInput').value.trim() : mSel;
+            if (!p.ilac) return fail('Lütfen ilaç adını yazın.');
+          } else if (oSel === 'Ateş ölçüldü') {
+            p.ates = $('editAtes').value;
+            if (p.ates === '') return fail('Lütfen ateş değerini girin.');
+          }
           p.not = $('editDigerNot').value.trim();
         }
 
@@ -3022,6 +3032,44 @@
         $('boxKakaRengiDiger').classList.toggle('hidden', val !== 'Diğer');
       }
 
+      // İlaç listesi tek yerden gelir: yeni kayıt formundaki ilaç butonları ("Diğer" hariç)
+      function medOptions() {
+        var out = [];
+        var btns = document.querySelectorAll('[data-group="ilacSecimi"] [data-val]');
+        for (var i = 0; i < btns.length; i++) {
+          var v = btns[i].getAttribute('data-val');
+          if (v !== 'Diğer') out.push(v);
+        }
+        return out;
+      }
+
+      function fillEditMedSelect(current) {
+        var sel = $('editIlacSelect'), meds = medOptions();
+        sel.innerHTML = '';
+        meds.concat(['Diğer']).forEach(function(m) {
+          var o = document.createElement('option');
+          o.value = m;
+          o.textContent = m === 'Diğer' ? 'Başka ilaç (elle yaz)' : m;
+          sel.appendChild(o);
+        });
+        if (current && meds.indexOf(current) === -1) {
+          sel.value = 'Diğer';
+          $('editIlacInput').value = current;
+        } else {
+          sel.value = current || meds[0] || 'Diğer';
+          $('editIlacInput').value = '';
+        }
+        $('editIlacInput').classList.toggle('hidden', sel.value !== 'Diğer');
+      }
+
+      // Düzenleme penceresinde sadece seçilen olaya ait alanları göster
+      function toggleEditDigerFields() {
+        var v = $('editNeOlduSelect').value;
+        $('editBoxDigerOlay').classList.toggle('hidden', v !== 'Diğer');
+        $('editBoxIlac').classList.toggle('hidden', v !== 'İlaç/damla verildi');
+        $('editBoxAtes').classList.toggle('hidden', v !== 'Ateş ölçüldü');
+      }
+
       function handleDigerChoice(val) {
         state.neOlduSecimi = val;
         $('boxIlac').classList.toggle('hidden', val !== 'İlaç/damla verildi');
@@ -3220,6 +3268,7 @@
             else if (key === 'bezDurumu') handleBezDurumu(val);
             else if (key === 'kakaMiktari') handleKakaMiktari(val);
             else if (key === 'kakaRengi') handleKakaRengi(val);
+            else if (key === 'ilacSecimi') $('ilacDigerText').classList.toggle('hidden', val !== 'Diğer');
             else if (key === 'neOlduSecimi') handleDigerChoice(val);
             return;
           }
@@ -3247,8 +3296,9 @@
         if (e.target.id === 'editKakaRengiSelect') {
           $('editBoxKakaRengiDiger').classList.toggle('hidden', e.target.value !== 'Diğer');
         }
-        if (e.target.id === 'editNeOlduSelect') {
-          $('editBoxDigerOlay').classList.toggle('hidden', e.target.value !== 'Diğer');
+        if (e.target.id === 'editNeOlduSelect') toggleEditDigerFields();
+        if (e.target.id === 'editIlacSelect') {
+          $('editIlacInput').classList.toggle('hidden', e.target.value !== 'Diğer');
         }
         if (e.target.id === 'bezFotoKamera' || e.target.id === 'bezFotoGaleri') {
           if (e.target.files && e.target.files[0]) handlePhotoSelected(e.target.files[0]);
@@ -3299,10 +3349,10 @@
         }
 
         ['secBez', 'secBeslenme', 'secDiger', 'secKaka', 'secKakaDetailFields', 'boxKakaRengiDiger',
-         'boxIlac', 'boxAtes', 'boxDigerOlayText', 'submitBar'].forEach(function(id) {
+         'boxIlac', 'boxAtes', 'boxDigerOlayText', 'ilacDigerText', 'submitBar'].forEach(function(id) {
           $(id).classList.add('hidden');
         });
-        ['kakaRengiDigerText', 'bezNot', 'beslenmeNot', 'digerOlayText', 'ates', 'digerNot'].forEach(function(id) {
+        ['kakaRengiDigerText', 'bezNot', 'beslenmeNot', 'digerOlayText', 'ates', 'digerNot', 'ilacDigerText'].forEach(function(id) {
           $(id).value = '';
         });
 
@@ -3326,6 +3376,15 @@
         if (isBez && !state.bezDurumu) { alert('Lütfen Bez Durumu seçin.'); return; }
         if (isBeslenme && state.feedItems.length === 0) { alert('Lütfen "+ Beslenme Ekle" ile en az bir öğe ekleyin.'); return; }
         if (isDiger && !state.neOlduSecimi) { alert('Lütfen "Ne Oldu?" başlığından bir seçenek işaretleyin.'); return; }
+        var finalIlac = '';
+        if (isDiger && state.neOlduSecimi === 'İlaç/damla verildi') {
+          finalIlac = state.ilacSecimi === 'Diğer' ? $('ilacDigerText').value.trim() : state.ilacSecimi;
+          if (!finalIlac) { alert('Lütfen ilaç adını yazın.'); return; }
+        }
+        if (isDiger && state.neOlduSecimi === 'Ateş ölçüldü' && $('ates').value === '') {
+          alert('Lütfen ateş değerini girin.');
+          return;
+        }
 
         // Bez: saat elle seçilmediyse KAYDET anını kullan
         if (!state.timeTouched && !isBeslenme) setNow(true);
@@ -3387,7 +3446,7 @@
           gaz: isBeslenme ? state.gaz : '',
           kusma: isBeslenme ? state.kusma : '',
           neOldu: finalNeOldu,
-          ilac: (isDiger && state.neOlduSecimi === 'İlaç/damla verildi') ? state.ilacSecimi : '',
+          ilac: finalIlac,
           ates: (isDiger && state.neOlduSecimi === 'Ateş ölçüldü') ? $('ates').value : '',
           not: notText.trim(),
           photoBase64: hasPoop ? state.photoBase64 : ''

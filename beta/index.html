@@ -1409,6 +1409,16 @@
       <div class="report-muted" id="notifyDevices" style="margin-top:10px;"></div>
     </div>
 
+    <div class="card hidden" id="adminCard">
+      <label class="sec-title">🛠️ Yönetici</label>
+      <div class="report-muted" style="margin-bottom:10px;">Eski sistemdeki (Google Sheets) kayıtları ve Drive'daki bez fotoğraflarını veritabanına kopyalar. Tekrar çalıştırmak güvenlidir: aynı kayıtların üzerine yazar.</div>
+      <div class="notify-row">
+        <button type="button" class="notify-btn" id="btnAdminImport">Sheets'ten verileri taşı</button>
+        <button type="button" class="notify-btn ghost" id="btnAdminBackup">Şimdi Sheets'e yedekle</button>
+      </div>
+      <div class="report-muted" id="adminResult" style="margin-top:10px;"></div>
+    </div>
+
     <div class="card">
       <label class="sec-title">⚙️ Benim Ayarlarım</label>
       <div class="report-muted" style="margin-bottom:12px;">Bu ayarlar sadece size aittir ve bildirimleri açtığınız tüm cihazlarınızda geçerlidir. Seçince otomatik kaydedilir.</div>
@@ -3618,6 +3628,8 @@
           if (target.hasAttribute('data-ob-retry')) { outboxRetry(target.getAttribute('data-ob-retry')); return; }
           if (target.hasAttribute('data-ob-del')) { outboxDelete(target.getAttribute('data-ob-del')); return; }
           if (target.id === 'btnLockOverride') { lockOverrideNow(); return; }
+          if (target.id === 'btnAdminImport') { adminRun('adminImport', target); return; }
+          if (target.id === 'btnAdminBackup') { adminRun('adminBackupNow', target); return; }
           if (target.id === 'btnPushEnable') { pushEnable(); return; }
           if (target.id === 'btnPushDisable') { pushDisable(); return; }
           if (target.id === 'btnPushTest') { pushTest(); return; }
@@ -4345,7 +4357,22 @@
         for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-nval') === val);
       }
 
+      // Yönetici bölümü sadece adreste ?admin=1 varsa görünür; sunucu ayrıca yönetici hesabını kontrol eder
+      function adminRun(fn, btn) {
+        if (fn === 'adminImport' && !confirm('Sheets\'teki tüm kayıtlar veritabanına kopyalanacak. Devam edilsin mi?')) return;
+        btn.disabled = true;
+        $('adminResult').textContent = '⏳ Çalışıyor, birkaç dakika sürebilir...';
+        backend().then(function(b) { return b[fn](); }).then(function(r) {
+          btn.disabled = false;
+          $('adminResult').textContent = '✅ Tamamlandı: ' + JSON.stringify(r);
+        }, function(err) {
+          btn.disabled = false;
+          $('adminResult').textContent = '❌ Hata: ' + errMsg(err);
+        });
+      }
+
       function initNotify() {
+        $('adminCard').classList.toggle('hidden', !/[?&]admin=1/.test(location.search));
         renderNotify();
         runApi().withSuccessHandler(function(d) { notifyData = d; renderNotify(); })
           .withFailureHandler(function(err) { $('notifyDevices').textContent = 'Ayarlar yüklenemedi: ' + errMsg(err); })

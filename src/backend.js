@@ -308,5 +308,5 @@ export async function deletePushToken() {
 
 /* ---------------- yönetici ---------------- */
 
-export async function adminImport() { return (await httpsCallable(fns, 'adminImport', { timeout: 540000 })()).data; }
+export async function adminImport(opts) { return (await httpsCallable(fns, 'adminImport', { timeout: 540000 })(opts || {})).data; }
 export async function adminBackupNow() { return (await httpsCallable(fns, 'adminBackupNow', { timeout: 300000 })()).data; }

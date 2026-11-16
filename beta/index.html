@@ -1416,6 +1416,10 @@
         <button type="button" class="notify-btn" id="btnAdminImport">Sheets'ten verileri taşı</button>
         <button type="button" class="notify-btn ghost" id="btnAdminBackup">Şimdi Sheets'e yedekle</button>
       </div>
+      <div class="notify-row">
+        <button type="button" class="notify-btn" id="btnAdminCutover">Son taşıma ve geçişi tamamla</button>
+      </div>
+      <div class="report-muted" style="margin-top:6px;">Geçiş tamamlanınca Sheets artık sadece her gece güncellenen bir yedek olur; eski uygulama kullanılmamalıdır.</div>
       <div class="report-muted" id="adminResult" style="margin-top:10px;"></div>
     </div>
 
@@ -3630,6 +3634,7 @@
           if (target.id === 'btnLockOverride') { lockOverrideNow(); return; }
           if (target.id === 'btnAdminImport') { adminRun('adminImport', target); return; }
           if (target.id === 'btnAdminBackup') { adminRun('adminBackupNow', target); return; }
+          if (target.id === 'btnAdminCutover') { adminRun('cutover', target); return; }
           if (target.id === 'btnPushEnable') { pushEnable(); return; }
           if (target.id === 'btnPushDisable') { pushDisable(); return; }
           if (target.id === 'btnPushTest') { pushTest(); return; }
@@ -4360,9 +4365,10 @@
       // Yönetici bölümü sadece adreste ?admin=1 varsa görünür; sunucu ayrıca yönetici hesabını kontrol eder
       function adminRun(fn, btn) {
         if (fn === 'adminImport' && !confirm('Sheets\'teki tüm kayıtlar veritabanına kopyalanacak. Devam edilsin mi?')) return;
+        if (fn === 'cutover' && !confirm('Eski uygulamadaki son kayıtlar taşınacak ve geçiş tamamlanacak. Bundan sonra herkes yeni sürümü kullanmalı. Devam edilsin mi?')) return;
         btn.disabled = true;
         $('adminResult').textContent = '⏳ Çalışıyor, birkaç dakika sürebilir...';
-        backend().then(function(b) { return b[fn](); }).then(function(r) {
+        backend().then(function(b) { return fn === 'cutover' ? b.adminImport({ cutover: true }) : b[fn](); }).then(function(r) {
           btn.disabled = false;
           $('adminResult').textContent = '✅ Tamamlandı: ' + JSON.stringify(r);
         }, function(err) {

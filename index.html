@@ -164,6 +164,10 @@
     .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
     .report-list .alarm { color: var(--danger); font-weight: 700; }
     .report-muted { color: var(--muted); font-size: 14px; }
+    .lock-note { grid-column: 1 / -1; margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: #fff7e6; color: #6b4a00; font-size: 14px; font-weight: 600; }
+    .lock-banner { margin-bottom: 12px; padding: 14px; border-radius: 14px; background: #fff7e6; border: 1.5px solid #f5c26b; color: #5c3d00; font-size: 15px; line-height: 1.45; }
+    .lock-banner button { margin-top: 10px; padding: 9px 14px; border-radius: 10px; border: 1.5px solid #d99a2b; background: #fff; color: #5c3d00; font: inherit; font-weight: 700; cursor: pointer; }
+    #secBeslenme.locked > .card { opacity: .35; pointer-events: none; }
     .outbox-bar { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 14px; font-weight: 600; }
     .outbox-bar.offline { background: #fff7e6; color: #6b4a00; }
     .outbox-bar .ob-err { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; color: #b91c1c; font-weight: 500; }
@@ -1133,6 +1137,7 @@
       <span id="stNextFeedText">🍼 Sonraki beslenme</span>
       <span class="next-feed-pill" id="stNextFeedBadge">-</span>
     </div>
+    <div class="lock-note hidden" id="lockNote"></div>
     <div class="cream-banner" id="creamBanner">
       <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
       <span class="cream-pill" id="stCreamBadge">-</span>
@@ -1249,6 +1254,10 @@
 
     <!-- KOŞULLU DAL 2: BESLENME -->
     <div id="secBeslenme" class="hidden">
+      <div class="lock-banner hidden" id="feedLockBanner">
+        <div id="feedLockText"></div>
+        <button type="button" id="btnLockOverride">Yine de ben gireyim</button>
+      </div>
       <div class="card">
         <label class="sec-title">Beslenme Öğeleri (Meme, Mama veya Sağılmış Süt)</label>
         <div id="feedItemsContainer"></div>
@@ -1393,10 +1402,23 @@
       <div class="notify-hint hidden" id="notifyHint"></div>
       <button type="button" class="submit-btn" id="btnPushEnable" style="margin-top:12px;">🔔 Bu cihazda bildirimleri aç</button>
       <div class="notify-row hidden" id="notifyOnButtons">
-        <button type="button" class="notify-btn" id="btnPushTest">Deneme bildirimi gönder</button>
         <button type="button" class="notify-btn ghost" id="btnPushDisable">Bu cihazda kapat</button>
       </div>
       <div class="report-muted" id="notifyDevices" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card hidden" id="adminCard">
+      <label class="sec-title">🛠️ Yönetici</label>
+      <div class="report-muted" style="margin-bottom:10px;">Eski sistemdeki (Google Sheets) kayıtları ve Drive'daki bez fotoğraflarını veritabanına kopyalar. Tekrar çalıştırmak güvenlidir: aynı kayıtların üzerine yazar.</div>
+      <div class="notify-row">
+        <button type="button" class="notify-btn" id="btnAdminImport">Sheets'ten verileri taşı</button>
+        <button type="button" class="notify-btn ghost" id="btnAdminBackup">Şimdi Sheets'e yedekle</button>
+      </div>
+      <div class="notify-row">
+        <button type="button" class="notify-btn" id="btnAdminCutover">Son taşıma ve geçişi tamamla</button>
+      </div>
+      <div class="report-muted" style="margin-top:6px;">Geçiş tamamlanınca Sheets artık sadece her gece güncellenen bir yedek olur; eski uygulama kullanılmamalıdır.</div>
+      <div class="report-muted" id="adminResult" style="margin-top:10px;"></div>
     </div>
 
     <div class="card">
@@ -1840,44 +1862,26 @@
         b.classList.remove('hidden');
       }
 
-      /* ---------------- SUNUCU (Apps Script veri servisi) ---------------- */
+      /* ---------------- VERİTABANI (Firebase) ---------------- */
 
       var CFG = window.APP_CONFIG || {};
-      var SESSION_KEY = 'bt_session';
+      try { localStorage.removeItem('bt_session'); } catch (e) {}   // eski Apps Script oturumu
 
-      function getSession() { try { return localStorage.getItem(SESSION_KEY) || ''; } catch (e) { return ''; } }
-      function setSession(v) { try { if (v) localStorage.setItem(SESSION_KEY, v); else localStorage.removeItem(SESSION_KEY); } catch (e) {} }
-
-      function hasServer() { return !!(CFG.API_URL && getSession()); }
-
-      // Apps Script'e JSON isteği. text/plain gönderiyoruz ki tarayıcı ön-kontrol (CORS preflight) yapmasın.
-      function postApi(body) {
-        return fetch(CFG.API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(body),
-          redirect: 'follow'
-        }).then(function(r) {
-          if (!r.ok) { var he = new Error('Sunucu hatası (' + r.status + ')'); he.retry = true; throw he; }
-          return r.json().catch(function() { var je = new Error('Sunucu geçici olarak yanıt vermedi.'); je.retry = true; throw je; });
-        }, function() {
-          var ne = new Error('İnternet bağlantısı yok veya sunucuya ulaşılamadı.');
-          ne.retry = true; ne.network = true;
-          throw ne;
-        }).then(function(res) {
-          if (!res || !res.ok) {
-            var e = new Error((res && res.error) || 'Bilinmeyen hata');
-            e.code = res && res.code;
-            throw e;
-          }
-          return res.data;
-        });
+      var BE = null, bePromise = null, signedIn = false;
+      function backend() {
+        if (!bePromise) {
+          bePromise = import('./firebase-app.js').then(function(m) { m.init(CFG.FIREBASE); BE = m; return m; });
+          bePromise.catch(function() { bePromise = null; });
+        }
+        return bePromise;
       }
 
+      function hasServer() { return signedIn; }
+
       function apiCall(action, args) {
-        return postApi({ action: action, session: getSession(), args: args || [] })
+        return backend().then(function(b) { return b.call(action, args || []); })
           .catch(function(err) {
-            if (err.code === 'AUTH') onAuthLost(err.message);
+            if (err && err.code === 'AUTH') onAuthLost(err.message);
             throw err;
           });
       }
@@ -1935,8 +1939,8 @@
 
       function onGoogleCredential(resp) {
         $('loginError').textContent = 'Giriş yapılıyor...';
-        postApi({ action: 'login', idToken: resp.credential }).then(function(res) {
-          setSession(res.session);
+        backend().then(function(b) { return b.signIn(resp.credential); }).then(function() {
+          signedIn = true;
           $('loginError').textContent = '';
           hideLogin();
           bootstrap();
@@ -1946,17 +1950,20 @@
       }
 
       function onAuthLost(msg) {
-        setSession('');
+        if (!signedIn && !$('loginScreen').classList.contains('hidden')) return;
+        signedIn = false;
+        if (BE) BE.signOut().catch(function() {});
         showLogin(msg);
       }
 
       function logout() {
-        try { pushOffForLogout(); } catch (e) {}
-        var s = getSession();
-        setSession('');
+        var done = function() {
+          signedIn = false;
+          if (BE) BE.releaseLock('beslenme').then(function() { return BE.signOut(); }).catch(function() {});
+        };
+        pushOffForLogout().then(done, done);
         ['bt_boot', 'bt_status', HIST_CACHE_KEY].forEach(function(k) { try { localStorage.removeItem(k); } catch (e) {} });
         try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) {}
-        if (CFG.API_URL && s) postApi({ action: 'logout', session: s }).catch(function() {});
         $('accountLine').classList.add('hidden');
         showLogin('');
       }
@@ -2523,12 +2530,14 @@
           box.textContent = '📷 Fotoğraf yükleniyor...';
           bodyEl.appendChild(box);
 
-          var a = document.createElement('a');
-          a.href = r.photoUrl;
-          a.target = '_blank';
-          a.className = 'photo-drive-link';
-          a.textContent = "Drive'da aç ›";
-          bodyEl.appendChild(a);
+          if (r.photoUrl !== 'db') {   // eski kayıt: fotoğraf Drive'da kaldıysa bağlantısı
+            var a = document.createElement('a');
+            a.href = r.photoUrl;
+            a.target = '_blank';
+            a.className = 'photo-drive-link';
+            a.textContent = "Drive'da aç ›";
+            bodyEl.appendChild(a);
+          }
 
           loadPhotoInto(box, r.id);
         }
@@ -3221,6 +3230,7 @@
       }
 
       function renderFeedItems() {
+        setTimeout(syncMyLock, 0);
         var container = $('feedItemsContainer');
         container.innerHTML = '';
         for (var i = 0; i < state.feedItems.length; i++) {
@@ -3424,6 +3434,26 @@
         }
       }
 
+      // Başkasının kaydı da dahil: durum kartı ve geçmiş canlı güncellenir
+      var liveStarted = false, histTimer = null;
+      function startLive() {
+        if (liveStarted || !BE) return;
+        liveStarted = true;
+        BE.onStatus(function(st) { if (signedIn) renderStatus(st); });
+        BE.onRecordsChanged(function() {
+          historyCacheClear();
+          if (currentTab !== 'history') return;
+          clearTimeout(histTimer);
+          histTimer = setTimeout(loadHistory, 600);
+        });
+        BE.watchLock('beslenme', function(l) {
+          otherLock = (l && l.email !== BE.myEmail()) ? l : null;
+          if (!otherLock) lockOverride = false;
+          renderLock();
+          syncMyLock();
+        });
+      }
+
       function bootstrap() {
         if (!hasServer()) return;
         // Önce telefonda saklanan son hali anında göster, güncel veri arkadan gelsin
@@ -3436,6 +3466,7 @@
           cacheSet('bt_boot', { email: res.email, people: res.people, defaultName: res.defaultName });
           applyBoot(res);
           renderStatus(res.status);
+          startLive();
           flushOutbox();
           setTimeout(refreshPushToken, 3000);
         }).withFailureHandler(statusFailed).getBootstrap();
@@ -3449,6 +3480,8 @@
         $('secBeslenme').classList.toggle('hidden', val !== 'Beslenme');
         $('secDiger').classList.toggle('hidden', val !== 'Diğer');
         $('submitBar').classList.remove('hidden');
+        renderLock();
+        syncMyLock();
       }
 
       function handleBezDurumu(val) {
@@ -3596,9 +3629,12 @@
           if (target.id === 'btnCreamDiaper') { hideModal('creamModalBackdrop'); startCreamDiaper(); return; }
           if (target.hasAttribute('data-ob-retry')) { outboxRetry(target.getAttribute('data-ob-retry')); return; }
           if (target.hasAttribute('data-ob-del')) { outboxDelete(target.getAttribute('data-ob-del')); return; }
+          if (target.id === 'btnLockOverride') { lockOverrideNow(); return; }
+          if (target.id === 'btnAdminImport') { adminRun('adminImport', target); return; }
+          if (target.id === 'btnAdminBackup') { adminRun('adminBackupNow', target); return; }
+          if (target.id === 'btnAdminCutover') { adminRun('cutover', target); return; }
           if (target.id === 'btnPushEnable') { pushEnable(); return; }
           if (target.id === 'btnPushDisable') { pushDisable(); return; }
-          if (target.id === 'btnPushTest') { pushTest(); return; }
           if (target.hasAttribute('data-nval')) { saveNotifySetting(target); return; }
           if (target.hasAttribute('data-nav')) { switchTab(target.getAttribute('data-nav')); return; }
           if (target.id === 'btnLoadReport') { loadReport(); return; }
@@ -3798,6 +3834,7 @@
         creamCheckPending = true;
         loadStatus();
         flushOutbox();
+        syncMyLock();
       });
 
       /* ---------------- KAYDET ---------------- */
@@ -3870,6 +3907,8 @@
         var pending = '';
         ['Beslenme', 'Bez', 'Diğer'].forEach(function(t) { if (!pending && t !== savedType && typeHasDraft(t)) pending = t; });
         selectType(pending);
+        if (savedType === 'Beslenme') lockOverride = false;
+        syncMyLock();
         if (pending === 'Beslenme' && state.feedItems.length) syncMainTimeToFirstItem();
         else setNow();
 
@@ -4016,6 +4055,7 @@
 
         if (isBez && !state.bezDurumu) { alert('Lütfen Bez Durumu seçin.'); return; }
         if (isBeslenme && state.feedItems.length === 0) { alert('Lütfen "+ Beslenme Ekle" ile en az bir öğe ekleyin.'); return; }
+        if (isBeslenme && otherLock && !lockOverride) { alert((otherLock.name || 'Başka biri') + ' şu an beslenme giriyor. Aynı beslenmeyi iki kez kaydetmemek için bekleyin ya da "Yine de ben gireyim" deyin.'); return; }
         if (isDiger && !state.neOlduSecimi) { alert('Lütfen "Ne Oldu?" başlığından bir seçenek işaretleyin.'); return; }
         var finalIlac = '';
         if (isDiger && state.neOlduSecimi === 'İlaç/damla verildi') {
@@ -4214,6 +4254,41 @@
       var HIST_CACHE_KEY = 'bt_hist_cache';
       function historyCacheClear() { try { localStorage.removeItem(HIST_CACHE_KEY); } catch (e) {} }
 
+      /* ---------------- "ŞU AN BESLENME GİRİLİYOR" İŞARETİ ----------------
+       * Biri Beslenme formunu açınca diğerlerine canlı görünür; aynı beslenmenin iki kez girilmesini önler.
+       * İşaret 3 dakika yenilenmezse (telefon kapandı vb.) kendiliğinden düşer. "Yine de ben gireyim" ile devralınabilir. */
+
+      var otherLock = null, lockOverride = false;
+
+      function lockMinutes(l) { return Math.max(0, Math.round((Date.now() - Number(l.since || l.at || Date.now())) / 60000)); }
+
+      function renderLock() {
+        var l = otherLock;
+        $('lockNote').classList.toggle('hidden', !l);
+        if (l) $('lockNote').textContent = '✍️ ' + (l.name || 'Biri') + ' şu an beslenme kaydı giriyor (' + lockMinutes(l) + ' dk önce başladı)';
+        var block = !!l && !lockOverride && state.kayitTuru === 'Beslenme';
+        $('feedLockBanner').classList.toggle('hidden', !block);
+        $('secBeslenme').classList.toggle('locked', block);
+        if (block) $('feedLockText').textContent = '⚠️ ' + (l.name || 'Başka biri') + ' ' + lockMinutes(l) +
+          ' dk önce bu beslenmeyi girmeye başladı. Aynı beslenme iki kez kaydedilmesin diye bekleyin; o kaydedince burası açılır.';
+      }
+      setInterval(function() { if (otherLock) renderLock(); }, 30000);
+
+      // Beslenme formu açıksa (veya yarım beslenme taslağı varsa) işareti biz tutarız
+      function syncMyLock() {
+        if (!BE || !signedIn) return;
+        var want = state.kayitTuru === 'Beslenme' || state.feedItems.length > 0;
+        var can = !otherLock || lockOverride;
+        if (want && can && !BE.holdingLock()) BE.acquireLock('beslenme', $('dolduran').value);
+        else if (!want && BE.holdingLock()) BE.releaseLock('beslenme');
+      }
+
+      function lockOverrideNow() {
+        lockOverride = true;
+        renderLock();
+        if (BE) BE.acquireLock('beslenme', $('dolduran').value);
+      }
+
       /* ---------------- BİLDİRİMLER ---------------- */
 
       var PUSH_TOKEN_KEY = 'bt_push_token', PUSH_CHECK_KEY = 'bt_push_checked';
@@ -4236,25 +4311,14 @@
         return dev + ' · ' + br + (isStandalone() ? ' (uygulama)' : '');
       }
 
-      var fbPromise = null;
-      function firebaseMessaging() {
-        if (!fbPromise) {
-          fbPromise = import('./firebase-push.js').then(function(fb) {
-            return fb.isSupported().then(function(ok) {
-              if (!ok) throw new Error('UNSUPPORTED');
-              var app = fb.initializeApp(CFG.FIREBASE);
-              return { fb: fb, messaging: fb.getMessaging(app) };
-            });
-          });
-          fbPromise.catch(function() { fbPromise = null; });
-        }
-        return fbPromise;
+      function fetchPushToken() {
+        return Promise.all([backend(), navigator.serviceWorker.ready]).then(function(r) {
+          return r[0].getPushToken(CFG.FIREBASE_VAPID_KEY, r[1]);
+        });
       }
 
-      function fetchPushToken() {
-        return Promise.all([firebaseMessaging(), navigator.serviceWorker.ready]).then(function(r) {
-          return r[0].fb.getToken(r[0].messaging, { vapidKey: CFG.FIREBASE_VAPID_KEY, serviceWorkerRegistration: r[1] });
-        });
+      function deletePushToken() {
+        return backend().then(function(b) { return b.deletePushToken(); }).catch(function() {});
       }
 
       // Bu cihaz neden bildirim alamaz? (boşsa alabilir)
@@ -4295,7 +4359,23 @@
         for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-nval') === val);
       }
 
+      // Yönetici bölümü sadece adreste ?admin=1 varsa görünür; sunucu ayrıca yönetici hesabını kontrol eder
+      function adminRun(fn, btn) {
+        if (fn === 'adminImport' && !confirm('Sheets\'teki tüm kayıtlar veritabanına kopyalanacak. Devam edilsin mi?')) return;
+        if (fn === 'cutover' && !confirm('Eski uygulamadaki son kayıtlar taşınacak ve geçiş tamamlanacak. Bundan sonra herkes yeni sürümü kullanmalı. Devam edilsin mi?')) return;
+        btn.disabled = true;
+        $('adminResult').textContent = '⏳ Çalışıyor, birkaç dakika sürebilir...';
+        backend().then(function(b) { return fn === 'cutover' ? b.adminImport({ cutover: true }) : b[fn](); }).then(function(r) {
+          btn.disabled = false;
+          $('adminResult').textContent = '✅ Tamamlandı: ' + JSON.stringify(r);
+        }, function(err) {
+          btn.disabled = false;
+          $('adminResult').textContent = '❌ Hata: ' + errMsg(err);
+        });
+      }
+
       function initNotify() {
+        $('adminCard').classList.toggle('hidden', !/[?&]admin=1/.test(location.search));
         renderNotify();
         runApi().withSuccessHandler(function(d) { notifyData = d; renderNotify(); })
           .withFailureHandler(function(err) { $('notifyDevices').textContent = 'Ayarlar yüklenemedi: ' + errMsg(err); })
@@ -4355,19 +4435,20 @@
       function pushDisable() {
         var token = storedPushToken();
         setStoredPushToken('');
-        firebaseMessaging().then(function(f) { return f.fb.deleteToken(f.messaging); }).catch(function() {});
+        deletePushToken();
         if (!token) { renderNotify(); return; }
         runApi().withSuccessHandler(function() { showToast('Bu cihazda bildirimler kapatıldı'); initNotify(); })
           .withFailureHandler(function() { initNotify(); })
           .pushUnregister(token);
       }
 
+      // Çıkışta bu cihazı bildirim listesinden çıkar (oturum kapanmadan önce)
       function pushOffForLogout() {
         var token = storedPushToken();
-        if (!token) return;
+        if (!token || !signedIn) return Promise.resolve();
         setStoredPushToken('');
-        firebaseMessaging().then(function(f) { return f.fb.deleteToken(f.messaging); }).catch(function() {});
-        if (CFG.API_URL && getSession()) postApi({ action: 'pushUnregister', session: getSession(), args: [token] }).catch(function() {});
+        deletePushToken();
+        return apiCall('pushUnregister', [token]).catch(function() {});
       }
 
       function pushTest() {
@@ -4409,12 +4490,19 @@
       // Geri tuşu için alta bir koruma kaydı: pencere açıkken geri tuşu uygulamadan çıkmasın, pencereyi kapatsın
       try { history.replaceState({ tab: 'new', root: true }, ''); history.pushState({ tab: 'new' }, ''); } catch (e) {}
       restoreDraft();
-      if (!CFG.API_URL || !CFG.CLIENT_ID) {
-        showError('Kurulum eksik: config.js içinde API_URL ve CLIENT_ID doldurulmalı.');
-      } else if (getSession()) {
-        bootstrap();
+      if (!CFG.FIREBASE || !CFG.CLIENT_ID) {
+        showError('Kurulum eksik: config.js içinde FIREBASE ve CLIENT_ID doldurulmalı.');
       } else {
-        showLogin('');
+        // Daha önce giriş yapıldıysa son hali hemen göster; oturum arkadan doğrulanır
+        var bootCache = cacheGet('bt_boot'), statusCache = cacheGet('bt_status');
+        if (bootCache) applyBoot(bootCache);
+        if (statusCache) renderStatus(statusCache, true);
+        backend().then(function(b) { return b.authReady(); }).then(function(info) {
+          if (info) { signedIn = true; bootstrap(); }
+          else showLogin('');
+        }, function(err) {
+          showLogin('Uygulama yüklenemedi: ' + errMsg(err));
+        });
       }
 
       // Ana ekrana eklenebilir uygulama (çevrimdışı kabuk)

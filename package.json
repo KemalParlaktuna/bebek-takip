@@ -1,0 +1,13 @@
+{
+  "name": "bebek-takip",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:client": "esbuild src/backend.js --bundle --format=esm --minify --legal-comments=none --target=es2020 --outfile=beta/firebase-app.js --banner:js=\"/* Bebek Takip veritabanı katmanı + Firebase JS SDK 13.3.0 (Apache License 2.0) — kaynak: src/backend.js */\"",
+    "test": "node functions/test/logic.test.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "firebase": "13.3.0"
+  }
+}

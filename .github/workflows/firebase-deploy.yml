@@ -1,0 +1,73 @@
+# Sunucu tarafını (Cloud Functions, Firestore kuralları ve dizinleri) otomatik yükler.
+# Gerekli GitHub gizli bilgileri (Settings > Secrets and variables > Actions):
+#   FIREBASE_SA : yükleme için hizmet hesabı anahtarı (JSON)
+#   APP_CONFIG  : izinli e-postalar ve Sheets ayarları (JSON) — depoda durmaz
+name: Firebase deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+      - '.github/workflows/firebase-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SECRETS: ${{ secrets.FIREBASE_SA != '' && secrets.APP_CONFIG != '' }}
+    steps:
+      - name: Check secrets
+        if: env.HAS_SECRETS != 'true'
+        run: echo "::notice::FIREBASE_SA ve APP_CONFIG gizli bilgileri henüz eklenmemiş; yükleme atlandı."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_SECRETS == 'true'
+
+      - uses: actions/setup-node@v4
+        if: env.HAS_SECRETS == 'true'
+        with:
+          node-version: 22
+
+      - name: Install function dependencies
+        if: env.HAS_SECRETS == 'true'
+        run: npm ci --prefix functions
+
+      - name: Logic tests
+        if: env.HAS_SECRETS == 'true'
+        run: node functions/test/logic.test.js
+
+      - name: Write function config
+        if: env.HAS_SECRETS == 'true'
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG }}
+        run: |
+          node -e "const c=JSON.stringify(JSON.parse(process.env.APP_CONFIG)); if (c.includes(\"'\")) throw new Error('APP_CONFIG tek tırnak içeremez'); require('fs').writeFileSync('functions/.env', 'APP_CONFIG=\'' + c + '\'\n')"
+
+      - uses: google-github-actions/auth@v2
+        if: env.HAS_SECRETS == 'true'
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        if: env.HAS_SECRETS == 'true'
+
+      - name: Enable required Google APIs
+        if: env.HAS_SECRETS == 'true'
+        run: |
+          gcloud services enable firestore.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com \
+            artifactregistry.googleapis.com run.googleapis.com eventarc.googleapis.com cloudscheduler.googleapis.com \
+            pubsub.googleapis.com sheets.googleapis.com drive.googleapis.com fcm.googleapis.com \
+            firebaserules.googleapis.com --project bebek-takip-bildirim
+
+      - name: Deploy
+        if: env.HAS_SECRETS == 'true'
+        run: npx -y firebase-tools@15 deploy --only functions,firestore --project bebek-takip-bildirim --non-interactive --force

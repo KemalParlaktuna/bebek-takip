@@ -1,0 +1,68 @@
+rules_version = '2';
+
+// Bebek Takip güvenlik kuralları.
+// Sadece "allowed" listesindeki Google hesapları veri okuyup yazabilir.
+// Liste depoda değil, veritabanında durur (GitHub gizli bilgisi APP_CONFIG'den doldurulur).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Gmail'de nokta ve +etiket aynı hesap sayılır (uygulamadaki normEmail ile aynı)
+    function normEmail(e) {
+      let l = e.lower();
+      let parts = l.split('@');
+      return (parts[1] == 'gmail.com' || parts[1] == 'googlemail.com')
+        ? parts[0].split('[+]')[0].replace('[.]', '') + '@gmail.com'
+        : l;
+    }
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null && request.auth.token.email_verified == true;
+    }
+    function me() { return normEmail(request.auth.token.email); }
+    function allowed() { return signedIn() && exists(/databases/$(database)/documents/allowed/$(me())); }
+
+    match /allowed/{email} {
+      allow get: if signedIn() && email == me();
+      allow list: if allowed();
+      allow write: if false;               // sadece sunucu fonksiyonları
+    }
+
+    match /records/{id} {
+      allow read: if allowed();
+      allow create, update: if allowed()
+        && request.resource.data.id == id
+        && request.resource.data.type in ['Bez', 'Beslenme', 'Diğer']
+        && request.resource.data.eventAt is number
+        && request.resource.data.user is string;
+      allow delete: if allowed();
+    }
+
+    match /photos/{id} {
+      allow read, delete: if allowed();
+      allow create, update: if allowed()
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+    }
+
+    // "Şu an biri beslenme giriyor" işareti
+    match /locks/{name} {
+      allow read, write: if allowed();
+    }
+
+    // Kişiye özel bildirim ayarları
+    match /notify/{email} {
+      allow read, write: if allowed() && email == me();
+    }
+
+    // Bildirim alan cihazlar (bir cihaz aynı anda tek hesaba bağlıdır)
+    match /devices/{dev} {
+      allow read: if allowed() && resource.data.email == me();
+      allow create, update: if allowed() && request.resource.data.email == me();
+      allow delete: if allowed() && resource.data.email == me();
+    }
+
+    match /meta/{doc} {
+      allow read: if allowed();
+      allow write: if false;
+    }
+  }
+}

@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_SECRETS: ${{ secrets.FIREBASE_SA != '' && secrets.APP_CONFIG != '' }}
+      # Yükleme hesabı başka bir projede oluşturuldu: API kullanımını Firebase projesine say
+      GOOGLE_CLOUD_QUOTA_PROJECT: bebek-takip-bildirim
+      CLOUDSDK_BILLING_QUOTA_PROJECT: bebek-takip-bildirim
     steps:
       - name: Check secrets
         if: env.HAS_SECRETS != 'true'
@@ -56,6 +59,7 @@ jobs:
         if: env.HAS_SECRETS == 'true'
         with:
           credentials_json: ${{ secrets.FIREBASE_SA }}
+          project_id: bebek-takip-bildirim
 
       - uses: google-github-actions/setup-gcloud@v2
         if: env.HAS_SECRETS == 'true'

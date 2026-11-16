@@ -153,7 +153,8 @@ async function backupToSheets() {
   const c = config();
   if (!c.spreadsheetId) throw new Error('spreadsheetId ayarı yok.');
   const meta = await db.doc('meta/migration').get();
-  if (!meta.exists || !meta.data().done) { logger.info('Taşıma tamamlanmadan yedek alınmaz.'); return { skipped: true }; }
+  // Geçiş tamamlanana kadar eski uygulama Sheets'e yazmaya devam ediyor: üzerine yazma
+  if (!meta.exists || !meta.data().cutover) { logger.info('Geçiş tamamlanmadan Sheets yedeği alınmaz.'); return { skipped: true, reason: 'geçiş tamamlanmadı' }; }
   const recs = await allRecords();
   if (!recs.length) return { skipped: true };
   const { sheets } = await googleClients();
@@ -250,8 +251,9 @@ export const adminImport = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async
     recs.slice(i, i + 400).forEach((r) => batch.set(db.doc('records/' + r.id), r));
     await batch.commit();
   }
-  await db.doc('meta/migration').set({ done: true, at: Date.now(), records: recs.length, photos });
-  return { allowed: allowedCount, records: recs.length, photos, photoFail };
+  const cutover = !!(req.data && req.data.cutover);
+  await db.doc('meta/migration').set({ done: true, at: Date.now(), records: recs.length, photos, ...(cutover ? { cutover: true, cutoverAt: Date.now() } : {}) }, { merge: true });
+  return { allowed: allowedCount, records: recs.length, photos, photoFail, cutover };
 });
 
 /** İzin listesi değiştiğinde (APP_CONFIG güncellenip yeniden yüklendiğinde) çağrılır. */

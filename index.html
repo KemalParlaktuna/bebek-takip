@@ -1425,15 +1425,8 @@
         <button type="button" class="chip" data-nval="300">5 saat</button>
       </div>
 
-      <div class="notify-label">🧴 Pişik kremi hatırlatması</div>
-      <div class="notify-desc">Son kremden sonra 2 bez krem sürülmeden değiştiyse "sıradaki bezde krem sürün" bildirimi gelir. Bez uyarısına da "bu değişimde krem sürün" notu eklenir.</div>
-      <div class="chip-grid" data-ngroup="cream">
-        <button type="button" class="chip" data-nval="1">Açık</button>
-        <button type="button" class="chip" data-nval="0">Kapalı</button>
-      </div>
-
-      <div class="notify-label">🌙 Gece (23:00–07:00) bez ve krem bildirimleri</div>
-      <div class="notify-desc">Beslenme hatırlatmaları gece de gelir. Bez ve krem bildirimleri gece susturulursa sabah 07:00'den sonra gelir.</div>
+      <div class="notify-label">🌙 Gece (23:00–07:00) bez bildirimleri</div>
+      <div class="notify-desc">Beslenme hatırlatmaları gece de gelir. Bez bildirimi gece susturulursa sabah 07:00'den sonra gelir.</div>
       <div class="chip-grid" data-ngroup="night">
         <button type="button" class="chip" data-nval="0">Gece susturulsun</button>
         <button type="button" class="chip" data-nval="1">Gece de gelsin</button>
@@ -3288,8 +3281,9 @@
 
       // Uygulama açıldığında / arka plandan dönünce: krem sırası geldiyse pencereyle hatırlat
       var creamCheckPending = true, lastCreamPopup = 0;
+      var CREAM_POPUP_ENABLED = false;   // istek üzerine kapatıldı; sayaç durum kartında görünmeye devam eder
       function maybeShowCreamPopup(res) {
-        if (!creamCheckPending) return;
+        if (!CREAM_POPUP_ENABLED || !creamCheckPending) return;
         creamCheckPending = false;
         var count = Number(res.diapersSinceCream || 0);
         if (!res.hasAnyDiaper || count < 2) return;
@@ -4287,7 +4281,6 @@
           var st = notifyData.settings;
           setNotifyChip('feed', String(st.feed));
           setNotifyChip('diaper', String(st.diaper));
-          setNotifyChip('cream', st.cream ? '1' : '0');
           setNotifyChip('night', st.night ? '1' : '0');
           var devs = notifyData.devices || [];
           $('notifyDevices').textContent = devs.length

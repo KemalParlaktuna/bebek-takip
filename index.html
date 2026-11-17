@@ -2119,6 +2119,7 @@
         var leaving = currentTab === 'new' && name !== 'new';
         currentTab = name;
         if (leaving) leaveForm();
+        if (leaving || name === 'new') syncMyLock();
         closeFab();
         for (var k in VIEWS) $(VIEWS[k].el).classList.toggle('hidden', k !== name);
         var view = $(VIEWS[name].el);
@@ -2159,9 +2160,9 @@
         saveDraftNow();
       }
 
-      // Formdan çıkınca girilenler silinmez (taslak); boş açılmış tür bırakılır (beslenme işareti kalkar)
+      // Formdan çıkınca girilenler silinmez (taslak); boş açılmış tür bırakılır
       function leaveForm() {
-        if (!state.kayitTuru || !typeHasDraft(state.kayitTuru)) { selectType(''); syncMyLock(); }
+        if (!state.kayitTuru || !typeHasDraft(state.kayitTuru)) selectType('');
         saveDraftNow();
       }
 
@@ -4476,7 +4477,8 @@
       // Beslenme formu açıksa (veya yarım beslenme taslağı varsa) işareti biz tutarız
       function syncMyLock() {
         if (!BE || !signedIn) return;
-        var want = state.kayitTuru === 'Beslenme' || state.feedItems.length > 0;
+        // Sadece Beslenme formu ekrandayken: taslakta bekleyen beslenme diğerlerine gösterilmez
+        var want = currentTab === 'new' && state.kayitTuru === 'Beslenme';
         var can = !otherLock || lockOverride;
         if (want && can && !BE.holdingLock()) BE.acquireLock('beslenme', $('dolduran').value);
         else if (!want && BE.holdingLock()) BE.releaseLock('beslenme');

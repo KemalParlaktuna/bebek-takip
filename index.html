@@ -173,6 +173,22 @@
     }
     .fab-opt span { font-size: 22px; }
     #viewHome, #viewNewRecord { padding-bottom: 80px; }
+    .med-card { grid-column: 1 / -1; background: var(--card); border-radius: 18px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #a78bfa; }
+    .med-card.due { border-left-color: #f59e0b; }
+    .med-card.late { border-left-color: #ef4444; }
+    .med-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; }
+    .med-row + .med-row { border-top: 1px solid #f1f5f9; }
+    .med-row .med-name { flex: 1; min-width: 0; font-weight: 700; }
+    .med-row .med-when { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .med-row.given .med-name { color: var(--muted); font-weight: 600; }
+    .med-row.due .med-when { color: #b45309; font-weight: 800; }
+    .med-row.late .med-when { color: #b91c1c; font-weight: 800; }
+    .med-give { padding: 7px 10px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .med-set-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .med-set-row div { flex: 1; min-width: 0; }
+    .med-set-row small { display: block; color: var(--muted); }
+    .med-times { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .med-times input { width: 100%; }
     .fab-opt.current { background: #dbeafe; color: #1e3a8a; }
     .fab-opt.has-draft::after { content: '✍️'; font-size: 15px; }
     .draft-card {
@@ -1215,6 +1231,7 @@
         <span class="tile-time" id="stDiaperTime"></span>
         <span class="status-sub" id="stDiaperSub"></span>
       </div>
+      <div class="med-card hidden" id="medCard"></div>
       <div class="cream-banner" id="creamBanner">
         <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
         <span class="cream-pill" id="stCreamBadge">-</span>
@@ -1380,10 +1397,8 @@
 
         <div id="boxIlac" class="sub-box hidden">
           <label class="sec-title">İlaç / Damla Seçimi</label>
-          <div class="chip-grid cols-1" data-group="ilacSecimi">
-            <button type="button" class="chip active" data-val="D Vitamini (3 damla)">💧 D Vitamini (3 damla)</button>
-            <button type="button" class="chip" data-val="Diğer">📝 Başka ilaç (elle yaz)</button>
-          </div>
+          <div class="chip-grid cols-1" data-group="ilacSecimi" id="ilacChips"></div>
+          <div class="report-muted" style="margin-top:8px;font-size:13px;">İlaç listesi ve saatleri Profil sayfasından düzenlenir.</div>
           <input type="text" id="ilacDigerText" class="hidden" style="margin-top:10px;" placeholder="İlaç adı ve dozu, örn: Parol şurup 2.5 ml">
         </div>
 
@@ -1487,6 +1502,13 @@
       <div class="notify-row" style="margin-top:14px;">
         <button type="button" class="notify-btn ghost" id="btnLogout">Çıkış yap</button>
       </div>
+    </div>
+
+    <div class="card">
+      <label class="sec-title">💊 İlaçlar ve Saatleri</label>
+      <div class="report-muted" style="margin-bottom:6px;">Aile için ortak liste. Saati girilen ilaçlar için ana sayfada "verildi mi" uyarısı çıkar.</div>
+      <div id="medSettingsList"></div>
+      <button type="button" class="notify-btn" id="btnMedAdd" style="width:100%;margin-top:12px;">+ İlaç ekle</button>
     </div>
 
     <label class="sec-title" style="margin:18px 4px 8px;">🔔 Bildirimler</label>
@@ -1789,6 +1811,35 @@
   </div>
 
   <!-- PİŞİK KREMİ HATIRLATMASI (uygulama açılınca) -->
+  <div id="medModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="medModalTitle">💊 İlaç ekle</div>
+      <div class="edit-field">
+        <label>İlaç adı ve dozu</label>
+        <input type="text" id="medNameInput" maxlength="80" placeholder="Örn: D Vitamini (3 damla)">
+      </div>
+      <div class="edit-field">
+        <label>Ne sıklıkla?</label>
+        <div class="chip-grid cols-3" id="medFreqGroup">
+          <button type="button" class="chip" data-medfreq="0">Gerektiğinde</button>
+          <button type="button" class="chip" data-medfreq="1">Günde 1</button>
+          <button type="button" class="chip" data-medfreq="2">Günde 2</button>
+          <button type="button" class="chip" data-medfreq="3">Günde 3</button>
+          <button type="button" class="chip" data-medfreq="4">Günde 4</button>
+        </div>
+      </div>
+      <div class="edit-field hidden" id="medTimesBox">
+        <label>Tahmini verme saatleri</label>
+        <div class="med-times" id="medTimes"></div>
+      </div>
+      <div class="modal-actions cols-3">
+        <button type="button" class="modal-btn danger" id="btnMedDelete">🗑️ Sil</button>
+        <button type="button" class="modal-btn cancel" id="btnMedCancel">Vazgeç</button>
+        <button type="button" class="modal-btn confirm" id="btnMedSave">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
   <div id="creamModalBackdrop" class="modal-backdrop hidden">
     <div class="modal-box">
       <div class="modal-title">🧴 Pişik kremi zamanı</div>
@@ -1899,7 +1950,7 @@
         gaz: '',
         kusma: '',
         neOlduSecimi: '',
-        ilacSecimi: 'D Vitamini (3 damla)',
+        ilacSecimi: '',
         photoBase64: '',
         photoName: '',
         modalFeedKind: 'meme',
@@ -2056,7 +2107,7 @@
           if (BE) BE.releaseLock('beslenme').then(function() { return BE.signOut(); }).catch(function() {});
         };
         pushOffForLogout().then(done, done);
-        ['bt_boot', 'bt_status', HIST_CACHE_KEY].forEach(function(k) { try { localStorage.removeItem(k); } catch (e) {} });
+        ['bt_boot', 'bt_status', 'bt_meds', HIST_CACHE_KEY].forEach(function(k) { try { localStorage.removeItem(k); } catch (e) {} });
         try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) {}
         $('btnProfile').classList.add('hidden');
         switchTab('home');
@@ -3526,7 +3577,7 @@
           setLast('stDiaper', res.lastDiaperTime, da);
         }
       }
-      setInterval(refreshAgo, 30000);
+      setInterval(function() { refreshAgo(); renderMeds(); }, 30000);
 
       function renderStatus(res, fromCache) {
         if (!res) return;
@@ -3553,6 +3604,7 @@
         nextFeedTs = Number(res.nextFeedTs || 0);
         renderNextFeed();
         refreshAgo();
+        renderMeds();
         state.breastTail = { side: res.tailSide || res.lastBreast || '', minutes: Number(res.tailMinutes || 0) };
         if (Number(res.minBreastMin) > 0) state.minBreast = Number(res.minBreastMin);
 
@@ -3641,6 +3693,7 @@
         if (liveStarted || !BE) return;
         liveStarted = true;
         BE.onStatus(function(st) { if (signedIn) renderStatus(st); });
+        BE.watchMeds(function(list) { if (signedIn) medsChanged(list); });
         BE.onRecordsChanged(function() {
           historyCacheClear();
           if (currentTab !== 'history') return;
@@ -3701,6 +3754,111 @@
       function handleKakaRengi(val) {
         state.kakaRengi = val;
         $('boxKakaRengiDiger').classList.toggle('hidden', val !== 'Diğer');
+      }
+
+      /* ---------------- İLAÇ LİSTESİ VE PLANI ---------------- */
+
+      var medList = cacheGet('bt_meds') || [];
+      var MED_DEFAULT_TIMES = { 1: ['09:00'], 2: ['09:00', '21:00'], 3: ['08:00', '16:00', '00:00'], 4: ['06:00', '12:00', '18:00', '00:00'] };
+
+      function medsChanged(list) {
+        medList = list;
+        cacheSet('bt_meds', list);
+        renderMedChips();
+        renderMedSettings();
+        renderMeds();
+      }
+
+      // Formdaki ilaç düğmeleri listeden gelir; listede olmayan eski seçim temizlenir
+      function renderMedChips() {
+        var names = medList.map(function(m) { return m.name; });
+        if (state.ilacSecimi && state.ilacSecimi !== 'Diğer' && names.indexOf(state.ilacSecimi) < 0) state.ilacSecimi = '';
+        $('ilacChips').innerHTML = names.concat(['Diğer']).map(function(n) {
+          return '<button type="button" class="chip' + (state.ilacSecimi === n ? ' active' : '') + '" data-val="' + esc(n) + '">' +
+            (n === 'Diğer' ? '📝 Başka ilaç (elle yaz)' : '💊 ' + esc(n)) + '</button>';
+        }).join('');
+      }
+
+      function freqText(m) { return m.times && m.times.length ? 'Günde ' + m.times.length + ': ' + m.times.join(', ') : 'Gerektiğinde (hatırlatma yok)'; }
+
+      function renderMedSettings() {
+        $('medSettingsList').innerHTML = medList.length ? medList.map(function(m, i) {
+          return '<div class="med-set-row"><div><b>' + esc(m.name) + '</b><small>' + esc(freqText(m)) + '</small></div>' +
+            '<button type="button" class="mini-ctrl-btn" data-med-edit="' + i + '">✏️ Düzenle</button></div>';
+        }).join('') : '<div class="report-muted">Henüz ilaç yok.</div>';
+      }
+
+      // Ana sayfa: bugünkü dozlar
+      function renderMeds() {
+        var card = $('medCard');
+        var doses = BE && lastStatus ? BE.medDoses(medList, lastStatus.medEvents || [], Date.now()) : [];
+        card.classList.toggle('hidden', !doses.length);
+        if (!doses.length) return;
+        var worst = doses.some(function(d) { return d.state === 'late'; }) ? 'late' : doses.some(function(d) { return d.state === 'due'; }) ? 'due' : '';
+        card.className = 'med-card' + (worst ? ' ' + worst : '');
+        card.innerHTML = '<div class="tile-label">💊 Bugünkü ilaçlar</div>' + doses.map(function(d) {
+          var mins = Math.round((Date.now() - d.ts) / 60000), when;
+          if (d.state === 'given') when = '✓ ' + d.givenTime + "'da verildi";
+          else if (d.state === 'upcoming') when = d.time;
+          else if (d.state === 'due') when = d.time + (mins > 0 ? ' · ' + durText(mins) + ' geçti' : ' · zamanı');
+          else when = d.time + ' · ' + durText(mins) + ' gecikti';
+          return '<div class="med-row ' + d.state + '"><span class="med-name">' + esc(d.name) + '</span><span class="med-when">' + esc(when) + '</span>' +
+            (d.state === 'due' || d.state === 'late' ? '<button type="button" class="med-give" data-med-give="' + esc(d.name) + '">Kaydet</button>' : '') + '</div>';
+        }).join('');
+      }
+
+      // "Kaydet": Diğer formunu bu ilaçla hazır aç
+      function openMedRecord(name) {
+        openNewRecord('Diğer');
+        setChipValue('neOlduSecimi', 'İlaç/damla verildi');
+        handleDigerChoice('İlaç/damla verildi');
+        setChipValue('ilacSecimi', name);
+        $('ilacDigerText').classList.add('hidden');
+        setNow();
+        saveDraftNow();
+      }
+
+      var medEditing = null;
+      function setMedFreq(n, times) {
+        var cur = Array.prototype.map.call($('medTimes').querySelectorAll('input'), function(x) { return x.value; });
+        times = times || MED_DEFAULT_TIMES[n] || [];
+        setActiveChip($('medFreqGroup'), document.querySelector('[data-medfreq="' + n + '"]'));
+        $('medTimesBox').classList.toggle('hidden', !n);
+        var h = '';
+        for (var i = 0; i < n; i++) h += '<input type="time" value="' + (cur[i] || times[i]) + '" aria-label="' + (i + 1) + '. doz saati">';
+        $('medTimes').innerHTML = h;
+      }
+
+      function openMedModal(idx) {
+        medEditing = idx >= 0 ? medList[idx] : null;
+        $('medModalTitle').textContent = medEditing ? '💊 İlacı düzenle' : '💊 İlaç ekle';
+        $('medNameInput').value = medEditing ? medEditing.name : '';
+        $('medTimes').innerHTML = '';
+        var times = medEditing ? medEditing.times || [] : ['09:00'];
+        setMedFreq(times.length, times);
+        $('btnMedDelete').classList.toggle('hidden', !medEditing);
+        showModal('medModalBackdrop');
+      }
+
+      function saveMed() {
+        var name = $('medNameInput').value.trim().replace(/\s+/g, ' ');
+        var times = Array.prototype.map.call($('medTimes').querySelectorAll('input'), function(x) { return x.value; });
+        if (!name) { alert('İlaç adını yazın.'); return; }
+        if (times.some(function(t) { return !t; })) { alert('Her doz için saat seçin.'); return; }
+        var dup = medList.some(function(m) { return m !== medEditing && m.name.toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'); });
+        if (dup) { alert('Bu adla bir ilaç zaten var.'); return; }
+        var btn = $('btnMedSave');
+        btn.disabled = true;
+        backend().then(function(b) { return b.saveMed(medEditing && medEditing.id, { name: name, times: times }); })
+          .then(function() { hideModal('medModalBackdrop'); showToast('İlaç kaydedildi 💊'); }, function(err) { alert('Kaydedilemedi: ' + errMsg(err)); })
+          .then(function() { btn.disabled = false; });
+      }
+
+      function deleteMed() {
+        if (!medEditing || !confirm('"' + medEditing.name + '" listeden silinsin mi? Eski kayıtlar silinmez.')) return;
+        var id = medEditing.id;
+        backend().then(function(b) { return b.deleteMed(id); })
+          .then(function() { hideModal('medModalBackdrop'); }, function(err) { alert('Silinemedi: ' + errMsg(err)); });
       }
 
       // İlaç listesi tek yerden gelir: yeni kayıt formundaki ilaç butonları ("Diğer" hariç)
@@ -3821,6 +3979,13 @@
           if (target.id === 'btnBack') { history.back(); return; }
           if (target.id === 'fab') { toggleFab(!fabOpen()); return; }
           if (target.hasAttribute('data-newtype')) { openNewRecord(target.getAttribute('data-newtype')); return; }
+          if (target.id === 'btnMedAdd') { openMedModal(-1); return; }
+          if (target.hasAttribute('data-med-edit')) { openMedModal(Number(target.getAttribute('data-med-edit'))); return; }
+          if (target.hasAttribute('data-medfreq')) { setMedFreq(Number(target.getAttribute('data-medfreq'))); return; }
+          if (target.id === 'btnMedSave') { saveMed(); return; }
+          if (target.id === 'btnMedCancel') { hideModal('medModalBackdrop'); return; }
+          if (target.id === 'btnMedDelete') { deleteMed(); return; }
+          if (target.hasAttribute('data-med-give')) { openMedRecord(target.getAttribute('data-med-give')); return; }
           if (target.hasAttribute('data-draft-del')) { deleteDraft(target.getAttribute('data-draft-del')); return; }
           if (target.hasAttribute('data-planstep')) {
             plan.minutes = Math.min(12 * 60, Math.max(15, plan.minutes + Number(target.getAttribute('data-planstep'))));
@@ -4013,6 +4178,7 @@
           if (openModals.timeModalBackdrop) closeTimeModal();
           if (openModals.feedModalBackdrop) closeFeedModal();
           if (openModals.detailModalBackdrop) closeDetailModal();
+          if (openModals.medModalBackdrop) hideModal('medModalBackdrop');
           try { history.pushState({ tab: currentTab }, ''); } catch (err) {}
           return;
         }
@@ -4047,7 +4213,7 @@
       var CHIP_DEFAULTS = {
         kayitTuru: '', bezDurumu: 'Kuru', pisik: 'Yok', pisikKremi: 'Hayır',
         kakaMiktari: 'Az (leke)', kakaRengi: '', kakaKivami: '',
-        gaz: '', kusma: '', neOlduSecimi: '', ilacSecimi: 'D Vitamini (3 damla)'
+        gaz: '', kusma: '', neOlduSecimi: '', ilacSecimi: ''
       };
 
       // Her kayıt türünün kendi alanları: biri kaydedilince diğerlerinin taslağı korunur
@@ -4269,7 +4435,7 @@
         var finalIlac = '';
         if (isDiger && state.neOlduSecimi === 'İlaç/damla verildi') {
           finalIlac = state.ilacSecimi === 'Diğer' ? $('ilacDigerText').value.trim() : state.ilacSecimi;
-          if (!finalIlac) { alert('Lütfen ilaç adını yazın.'); return; }
+          if (!finalIlac) { alert(state.ilacSecimi === 'Diğer' ? 'Lütfen ilaç adını yazın.' : 'Lütfen ilacı seçin.'); return; }
         }
         if (isDiger && state.neOlduSecimi === 'Ateş ölçüldü' && $('ates').value === '') {
           alert('Lütfen ateş değerini girin.');
@@ -4697,6 +4863,8 @@
       buildWheel($('wheelHour'), 24, true);
       buildWheel($('wheelMinute'), 60, false);
       setNow();
+      renderMedChips();
+      renderMedSettings();
       // Geri tuşu için alta bir koruma kaydı: pencere açıkken geri tuşu uygulamadan çıkmasın, pencereyi kapatsın
       try { history.replaceState({ tab: 'home', root: true }, ''); history.pushState({ tab: 'home' }, ''); } catch (e) {}
       restoreDraft();

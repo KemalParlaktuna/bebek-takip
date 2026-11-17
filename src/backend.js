@@ -94,6 +94,7 @@ function startStatusWatch() {
 function stopWatchers() {
   if (unsubStatus) { unsubStatus(); unsubStatus = null; }
   if (unsubLock) { unsubLock(); unsubLock = null; }
+  if (unsubMeds) { unsubMeds(); unsubMeds = null; }
   lastRecs = null;
 }
 
@@ -293,6 +294,33 @@ export async function releaseLock(name) {
 }
 
 export function holdingLock() { return !!lockHeartbeat; }
+
+/* ---------------- ilaç listesi (aile ortak) ---------------- */
+
+// Silinen ilaç active:false olarak kalır; böylece liste hiç boşalmaz ve eski sabit D vitamini sadece bir kez eklenir
+let unsubMeds = null;
+export function watchMeds(cb) {
+  if (unsubMeds) unsubMeds();
+  unsubMeds = onSnapshot(collection(db, 'meds'), (snap) => {
+    if (snap.empty && !snap.metadata.fromCache) {
+      setDoc(doc(db, 'meds', 'd-vitamini'), { ...L.buildMed({ name: 'D Vitamini (3 damla)', times: [] }), updatedAt: Date.now(), by: me }).catch(() => {});
+      return;
+    }
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.active !== false)
+      .sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr')));
+  }, (e) => console.warn('İlaç listesi dinleme hatası', e));
+}
+
+export async function saveMed(id, data) {
+  const med = L.buildMed(data);
+  await setDoc(id ? doc(db, 'meds', id) : doc(collection(db, 'meds')), { ...med, updatedAt: Date.now(), by: me });
+}
+
+export async function deleteMed(id) {
+  await setDoc(doc(db, 'meds', id), { active: false, updatedAt: Date.now(), by: me }, { merge: true });
+}
+
+export const medDoses = L.medDoses;
 
 /* ---------------- bildirim anahtarı (FCM) ---------------- */
 

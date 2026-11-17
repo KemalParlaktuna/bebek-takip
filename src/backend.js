@@ -116,7 +116,8 @@ const api = {
     const snap = await getDocs(collection(db, 'allowed'));
     const people = [];
     snap.docs.forEach((d) => { const n = d.data().name; if (n && people.indexOf(n) < 0) people.push(n); });
-    return { email: auth.currentUser ? auth.currentUser.email : '', defaultName: myName, people, status: await currentStatus() };
+    const u = auth.currentUser || {};
+    return { email: u.email || '', photo: u.photoURL || '', displayName: u.displayName || '', defaultName: myName, people, status: await currentStatus() };
   },
 
   getLastStatus() { return currentStatus(); },

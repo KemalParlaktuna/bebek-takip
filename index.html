@@ -173,6 +173,21 @@
     }
     .fab-opt span { font-size: 22px; }
     #viewHome { padding-bottom: 80px; }
+    .draft-card {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 10px 10px 14px;
+      margin-bottom: 10px;
+      border-radius: 16px;
+      background: #fff7e6; border: 1.5px solid #fcd34d;
+      font-size: 14px; color: #6b4a00;
+    }
+    .draft-card span { flex: 1; min-width: 0; }
+    .draft-card button {
+      padding: 8px 12px; border-radius: 10px; border: none;
+      background: #f59e0b; color: #fff;
+      font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .draft-card button.ghost { background: transparent; color: #92400e; }
     @media (min-width: 900px) {
       body { max-width: 760px; margin: 0 auto; }
     }
@@ -1179,6 +1194,7 @@
 
   <!-- ANA SAYFA: son durum -->
   <div id="viewHome">
+    <div id="draftCards"></div>
     <div class="status-bar" id="statusBar">
       <div class="lock-note hidden" id="lockNote"></div>
       <div class="next-feed-banner hidden" id="nextFeedBanner">
@@ -1232,14 +1248,6 @@
       <button type="button" class="now-btn" id="btnNow">🕒 Şu Anki Tarih ve Saate Sıfırla</button>
     </div>
 
-    <div class="card">
-      <label class="sec-title">Kayıt Türü Seçin</label>
-      <div class="chip-grid cols-3" data-group="kayitTuru">
-        <button type="button" class="chip" data-val="Bez">🧷 Bez</button>
-        <button type="button" class="chip" data-val="Beslenme">🍼 Beslenme</button>
-        <button type="button" class="chip" data-val="Diğer">🩺 Diğer</button>
-      </div>
-    </div>
 
     <!-- KOŞULLU DAL 1: BEZ -->
     <div id="secBez" class="hidden">
@@ -2097,7 +2105,7 @@
         'home':    { el: 'viewHome',      title: '👶 Bebek Takip' },
         'history': { el: 'viewHistory',   title: '👶 Bebek Takip' },
         'report':  { el: 'viewReport',    title: '👶 Bebek Takip' },
-        'new':     { el: 'viewNewRecord', title: 'Yeni Kayıt' },
+        'new':     { el: 'viewNewRecord', title: 'Yeni Kayıt' },  // başlık türe göre: newTitle()
         'profile': { el: 'viewNotify',    title: 'Profil ve Ayarlar' }
       };
 
@@ -2108,7 +2116,10 @@
           try { history.pushState({ tab: name }, ''); } catch (e) {}
         }
         var from = PAGES.indexOf(currentTab), to = PAGES.indexOf(name);
+        var leaving = currentTab === 'new' && name !== 'new';
         currentTab = name;
+        if (leaving) leaveForm();
+        if (leaving || name === 'new') syncMyLock();
         closeFab();
         for (var k in VIEWS) $(VIEWS[k].el).classList.toggle('hidden', k !== name);
         var view = $(VIEWS[name].el);
@@ -2120,7 +2131,8 @@
         $('tabStrip').classList.toggle('hidden', to < 0);
         $('btnBack').classList.toggle('hidden', to >= 0);
         $('fab').classList.toggle('hidden', name !== 'home');
-        $('appBarTitle').textContent = VIEWS[name].title;
+        $('appBarTitle').textContent = name === 'new' ? newTitle() : VIEWS[name].title;
+        if (name === 'home') renderDrafts();
         window.scrollTo(0, 0);
         if (name === 'history') { state.currentPage = 1; loadHistory(); }
         if (name === 'report') initReport();
@@ -2137,11 +2149,42 @@
       }
       function closeFab() { toggleFab(false); }
 
+      var TYPE_ICON = { 'Bez': '🧷', 'Beslenme': '🍼', 'Diğer': '🩺' };
+      function newTitle() { return state.kayitTuru ? TYPE_ICON[state.kayitTuru] + ' ' + state.kayitTuru + ' Kaydı' : 'Yeni Kayıt'; }
+
       function openNewRecord(type) {
         closeFab();
         switchTab('new');
-        if (type && type !== state.kayitTuru) selectType(type);
+        if (type !== state.kayitTuru) selectType(type);
+        if (type === 'Beslenme' && state.feedItems.length) syncMainTimeToFirstItem();
         saveDraftNow();
+      }
+
+      // Formdan çıkınca girilenler silinmez (taslak); boş açılmış tür bırakılır
+      function leaveForm() {
+        if (!state.kayitTuru || !typeHasDraft(state.kayitTuru)) selectType('');
+        saveDraftNow();
+      }
+
+      function renderDrafts() {
+        var h = '';
+        ['Beslenme', 'Bez', 'Diğer'].forEach(function(t) {
+          if (!typeHasDraft(t)) return;
+          h += '<div class="draft-card"><span>✍️ Yarım kalan <b>' + TYPE_ICON[t] + ' ' + t + '</b> kaydı</span>' +
+            '<button type="button" class="ghost" data-draft-del="' + t + '">Sil</button>' +
+            '<button type="button" data-newtype="' + t + '">Devam et</button></div>';
+        });
+        $('draftCards').innerHTML = h;
+      }
+
+      function deleteDraft(type) {
+        if (!confirm('Yarım kalan ' + type.toLowerCase() + ' kaydı silinsin mi?')) return;
+        clearTypeFields(type);
+        syncSubBoxes();
+        if (state.kayitTuru === type) selectType('');
+        syncMyLock();
+        saveDraftNow();
+        renderDrafts();
       }
 
       /* ---------------- KAYDIRMA (swipe) ---------------- */
@@ -3629,6 +3672,7 @@
         $('secBeslenme').classList.toggle('hidden', val !== 'Beslenme');
         $('secDiger').classList.toggle('hidden', val !== 'Diğer');
         $('submitBar').classList.remove('hidden');
+        if (currentTab === 'new') $('appBarTitle').textContent = newTitle();
         renderLock();
         syncMyLock();
       }
@@ -3768,6 +3812,7 @@
           if (target.id === 'btnBack') { history.back(); return; }
           if (target.id === 'fab') { toggleFab(!fabOpen()); return; }
           if (target.hasAttribute('data-newtype')) { openNewRecord(target.getAttribute('data-newtype')); return; }
+          if (target.hasAttribute('data-draft-del')) { deleteDraft(target.getAttribute('data-draft-del')); return; }
           if (target.hasAttribute('data-planstep')) {
             plan.minutes = Math.min(12 * 60, Math.max(15, plan.minutes + Number(target.getAttribute('data-planstep'))));
             renderPlan();
@@ -4079,7 +4124,7 @@
 
       function saveDraftNow() {
         clearTimeout(draftTimer);
-        var d = { v: 1, at: Date.now(), kayitTuru: state.kayitTuru, chips: {}, texts: {},
+        var d = { v: 1, at: Date.now(), kayitTuru: state.kayitTuru, onForm: currentTab === 'new', chips: {}, texts: {},
                   feedItems: state.feedItems, midGas: state.midGas,
                   timeTouched: state.timeTouched, date: $('olayTarih').value, h: state.selectedHour, m: state.selectedMinute,
                   photo: state.photoBase64, photoName: state.photoName };
@@ -4120,13 +4165,16 @@
           $('photoFileName').textContent = state.photoName;
           $('photoPreviewWrap').classList.remove('hidden');
         }
-        selectType(d.kayitTuru || '');
+        // Form sadece uygulamadan formdayken çıkıldıysa açılır; değilse ana sayfada 'Devam et' kartı görünür
+        var reopen = d.onForm && d.kayitTuru;
+        selectType(reopen ? d.kayitTuru : '');
         if (d.timeTouched && d.date) {
           $('olayTarih').value = d.date; syncDateText('olayTarih');
           state.selectedHour = d.h; state.selectedMinute = d.m; state.timeTouched = true;
           updateTriggerButton();
         }
-        if (d.kayitTuru) { switchTab('new'); showToast('Yarım kalan kaydınız geri yüklendi ✍️'); }
+        if (reopen) { switchTab('new'); showToast('Yarım kalan kaydınız geri yüklendi ✍️'); }
+        else renderDrafts();
       }
 
       /* ---------------- SONRAKİ BESLENME PLANI ---------------- */
@@ -4429,7 +4477,8 @@
       // Beslenme formu açıksa (veya yarım beslenme taslağı varsa) işareti biz tutarız
       function syncMyLock() {
         if (!BE || !signedIn) return;
-        var want = state.kayitTuru === 'Beslenme' || state.feedItems.length > 0;
+        // Sadece Beslenme formu ekrandayken: taslakta bekleyen beslenme diğerlerine gösterilmez
+        var want = currentTab === 'new' && state.kayitTuru === 'Beslenme';
         var can = !otherLock || lockOverride;
         if (want && can && !BE.holdingLock()) BE.acquireLock('beslenme', $('dolduran').value);
         else if (!want && BE.holdingLock()) BE.releaseLock('beslenme');

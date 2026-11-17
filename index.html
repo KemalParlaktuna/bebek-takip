@@ -172,7 +172,9 @@
       animation: swipeInLeft 0.18s ease;
     }
     .fab-opt span { font-size: 22px; }
-    #viewHome { padding-bottom: 80px; }
+    #viewHome, #viewNewRecord { padding-bottom: 80px; }
+    .fab-opt.current { background: #dbeafe; color: #1e3a8a; }
+    .fab-opt.has-draft::after { content: '✍️'; font-size: 15px; }
     .draft-card {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 10px 10px 14px;
@@ -2130,7 +2132,7 @@
         $('tabInk').style.transform = 'translateX(' + (Math.max(0, to) * 100) + '%)';
         $('tabStrip').classList.toggle('hidden', to < 0);
         $('btnBack').classList.toggle('hidden', to >= 0);
-        $('fab').classList.toggle('hidden', name !== 'home');
+        $('fab').classList.toggle('hidden', name !== 'home' && name !== 'new');
         $('appBarTitle').textContent = name === 'new' ? newTitle() : VIEWS[name].title;
         if (name === 'home') renderDrafts();
         window.scrollTo(0, 0);
@@ -2143,6 +2145,13 @@
 
       function fabOpen() { return !$('fabMenu').classList.contains('hidden'); }
       function toggleFab(open) {
+        // Formdayken açık olan tür ve yarım kalan türler menüde işaretli
+        var opts = document.querySelectorAll('#fabMenu [data-newtype]');
+        for (var i = 0; i < opts.length; i++) {
+          var t = opts[i].getAttribute('data-newtype'), cur = currentTab === 'new' && t === state.kayitTuru;
+          opts[i].classList.toggle('current', cur);
+          opts[i].classList.toggle('has-draft', !cur && typeHasDraft(t));
+        }
         $('fab').classList.toggle('open', open);
         $('fabMenu').classList.toggle('hidden', !open);
         $('fabOverlay').classList.toggle('hidden', !open);

@@ -46,6 +46,52 @@ export function agoText(pastMs, nowMs) {
   return m + ' dk önce';
 }
 
+/* ---------------- ilaç planı ---------------- */
+
+const DAY_MS = 24 * 3600 * 1000;
+const MED_DUE_BEFORE_MIN = 30;   // saatinden bu kadar önce "zamanı" sayılır
+const MED_LATE_AFTER_MIN = 30;   // saatinden bu kadar sonra hâlâ verilmediyse "gecikti"
+export const MED_MAX_TIMES = 4;
+
+/** İlaç tanımını doğrular. times boşsa "gerektiğinde" (hatırlatma yok). */
+export function buildMed(data) {
+  const name = String((data && data.name) || '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('İlaç adı yazılmalı.');
+  if (name.length > 80) throw new Error('İlaç adı en fazla 80 karakter olabilir.');
+  const times = [...new Set((data.times || []).map((t) => String(t).trim()))].sort();
+  times.forEach((t) => { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw new Error('Geçersiz saat: ' + t); });
+  if (times.length > MED_MAX_TIMES) throw new Error('Günde en fazla ' + MED_MAX_TIMES + ' doz girilebilir.');
+  return { name, times, active: data.active !== false };
+}
+
+/**
+ * Bugünkü ilaç dozları (İstanbul günü). meds: [{name, times, active}], events: [{med, at}] (son ~36 saat).
+ * Her dozun penceresi komşu dozlarla arasının yarısına kadardır (günde 1 dozda ±12 saat);
+ * pencerede o ilacın kaydı varsa doz "verildi" sayılır.
+ * state: 'given' | 'upcoming' | 'due' (saatine 30 dk kala – 30 dk sonrası) | 'late'
+ */
+export function medDoses(meds, events, nowMs) {
+  const day = fmt(nowMs, 'yyyy-MM-dd');
+  const out = [];
+  (meds || []).forEach((m) => {
+    if (!m || m.active === false || !m.name) return;
+    const slots = (m.times || []).map((t) => parseLocal(day + ' ' + t)).filter((x) => !isNaN(x)).sort((a, b) => a - b);
+    const given = (events || []).filter((e) => e.med === m.name).map((e) => Number(e.at));
+    slots.forEach((ts, i) => {
+      const prev = i > 0 ? slots[i - 1] : slots[slots.length - 1] - DAY_MS;
+      const next = i < slots.length - 1 ? slots[i + 1] : slots[0] + DAY_MS;
+      const from = (prev + ts) / 2, to = (ts + next) / 2;
+      const at = given.find((g) => g >= from && g < to) || 0;
+      let state = 'late';
+      if (at) state = 'given';
+      else if (nowMs < ts - MED_DUE_BEFORE_MIN * 60000) state = 'upcoming';
+      else if (nowMs <= ts + MED_LATE_AFTER_MIN * 60000) state = 'due';
+      out.push({ name: m.name, time: fmt(ts, 'HH:mm'), ts, state, givenAt: at, givenTime: at ? fmt(at, 'HH:mm') : '' });
+    });
+  });
+  return out.sort((a, b) => a.ts - b.ts);
+}
+
 /* ---------------- e-posta ---------------- */
 
 // Gmail'de "ayse.yilmaz", "ayseyilmaz" ve "ayseyilmaz+x" aynı hesaptır
@@ -259,9 +305,12 @@ export function computeStatus(recs, nowMs = Date.now()) {
     tailSide: '', tailMinutes: 0, nextRemaining: 0, minBreastMin: MIN_BREAST_MIN,
     nextFeedTs: 0, nextFeedTime: '', lastFeedTs: 0,
     lastDiaperTime: '', diaperAgo: '', lastDiaperTs: 0, lastDiaperBy: '',
-    hasAnyDiaper: false, hasAnyCreamRecord: false, diapersSinceCream: 0
+    hasAnyDiaper: false, hasAnyCreamRecord: false, diapersSinceCream: 0, medEvents: []
   };
   const rows = recs.filter((r) => r && r.eventAt).slice().sort((a, b) => b.eventAt - a.eventAt);
+  // İlaç planı için son 36 saatte verilen ilaçlar (dozlar istemcide medDoses ile hesaplanır)
+  res.medEvents = rows.filter((r) => r.type === 'Diğer' && r.med && r.eventAt > nowMs - 1.5 * DAY_MS)
+    .map((r) => ({ med: String(r.med), at: r.eventAt }));
   let feedDone = false, breastDone = false, diaperDone = false, creamDone = false;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];

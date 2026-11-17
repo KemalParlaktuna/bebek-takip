@@ -43,6 +43,16 @@ service cloud.firestore {
         && request.resource.data.data.size() < 1000000;
     }
 
+    // Aile ortak ilaç listesi; silme yok, silinen ilaç active:false olur
+    match /meds/{id} {
+      allow read: if allowed();
+      allow create, update: if allowed()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+        && request.resource.data.times is list && request.resource.data.times.size() <= 4
+        && request.resource.data.active is bool;
+    }
+
     // "Şu an biri beslenme giriyor" işareti
     match /locks/{name} {
       allow read, write: if allowed();

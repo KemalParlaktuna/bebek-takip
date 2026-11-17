@@ -18,6 +18,34 @@ test('Gmail e-posta eşleme', () => {
   assert.equal(L.normEmail('ali_veli@yahoo.com'), 'ali_veli@yahoo.com');
 });
 
+test('İlaç tanımı doğrulama', () => {
+  assert.deepEqual(L.buildMed({ name: '  D  Vitamini ', times: ['21:00', '09:00', '09:00'] }), { name: 'D Vitamini', times: ['09:00', '21:00'], active: true });
+  assert.deepEqual(L.buildMed({ name: 'Parol', times: [] }).times, [], 'gerektiğinde');
+  assert.throws(() => L.buildMed({ name: '', times: [] }), /adı/);
+  assert.throws(() => L.buildMed({ name: 'X', times: ['25:00'] }), /saat/);
+  assert.throws(() => L.buildMed({ name: 'X', times: ['01:00', '02:00', '03:00', '04:00', '05:00'] }), /en fazla/);
+});
+
+test('Günlük ilaç dozları', () => {
+  const meds = [{ name: 'D', times: ['09:00'] }, { name: 'A', times: ['08:00', '20:00'] }, { name: 'P', times: [] }, { name: 'Eski', times: ['10:00'], active: false }];
+  const ev = (med, s) => ({ med, at: at(s) });
+  // 12:00: D 08:40'ta verildi; A 08:00 dozu verilmedi (gecikti), 20:00 dozu ileride
+  let d = L.medDoses(meds, [ev('D', '2026-11-16 08:40')], at('2026-11-16 12:00'));
+  assert.deepEqual(d.map((x) => x.name + ' ' + x.time + ' ' + x.state), ['A 08:00 late', 'D 09:00 given', 'A 20:00 upcoming']);
+  assert.equal(d[1].givenTime, '08:40');
+  // Günde 1 doz: pencere 09:00 ± 12 sa, yani dün 21:00'da başlar
+  d = L.medDoses([meds[0]], [ev('D', '2026-11-15 20:30')], at('2026-11-16 09:10'));
+  assert.equal(d[0].state, 'due');
+  d = L.medDoses([meds[0]], [ev('D', '2026-11-15 21:30')], at('2026-11-16 09:10'));
+  assert.equal(d[0].state, 'given');
+  // Bir kayıt iki dozu birden karşılamaz; geç verilen doz kendi penceresinde sayılır
+  d = L.medDoses([meds[1]], [ev('A', '2026-11-16 13:00')], at('2026-11-16 20:20'));
+  assert.deepEqual(d.map((x) => x.state), ['given', 'due']);
+  // Durum kartı son 36 saatin ilaç kayıtlarını taşır
+  const st = L.computeStatus([{ type: 'Diğer', med: 'D', eventAt: at('2026-11-16 08:40') }, { type: 'Diğer', med: 'D', eventAt: at('2026-11-14 08:40') }], at('2026-11-16 12:00'));
+  assert.deepEqual(st.medEvents, [{ med: 'D', at: at('2026-11-16 08:40') }]);
+});
+
 const feed = (id, time, items, extra = {}) => L.buildRecord({ id, kayitTuru: 'Beslenme', dolduran: 'Kemal', olayZamani: time, feedItems: items, ...extra }, null, 'k@x', now);
 const bez = (id, time, ds, krem = 'Hayır', extra = {}) => L.buildRecord({ id, kayitTuru: 'Bez', dolduran: 'Ekin', olayZamani: time, bezDurumu: ds, pisikKremi: krem, ...extra }, null, 'e@x', now);
 

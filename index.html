@@ -65,74 +65,116 @@
       padding: 0 0 0 8px;
       cursor: pointer;
     }
-    /* ---- Sol panel ---- */
-    .side-nav {
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      width: 260px;
-      background: #ffffff;
-      border-right: 1px solid var(--border);
-      z-index: 950;
-      display: flex;
-      flex-direction: column;
-      padding: calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)) 12px;
-      transform: translateX(-100%);
-      transition: transform 0.22s ease;
-      box-shadow: 4px 0 24px rgba(15, 23, 42, 0.12);
-    }
-    .side-nav.open { transform: translateX(0); }
-    .nav-brand { font-size: 20px; font-weight: 800; padding: 6px 10px 18px; }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-      text-align: left;
-      padding: 13px 12px;
-      margin-bottom: 4px;
-      border: none;
-      border-radius: 12px;
-      background: transparent;
-      color: #334155;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .nav-item span { width: 24px; text-align: center; }
-    .nav-item.active { background: #eff6ff; color: var(--primary); }
-    .nav-footer { margin-top: auto; padding: 10px 6px 0; border-top: 1px solid #e2e8f0; }
-    .nav-footer .account-line { text-align: left; margin: 0; }
-    .nav-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.4);
-      z-index: 940;
-    }
+    /* ---- Üst çubuk, sekme şeridi ---- */
     .app-bar {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
+      min-height: 44px;
     }
-    .menu-btn {
-      width: 44px;
-      height: 44px;
+    .back-btn {
+      width: 40px; height: 40px;
       border-radius: 12px;
       border: 1.5px solid var(--border);
       background: #fff;
-      font-size: 22px;
+      font-size: 24px; line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
     }
-    .app-bar-title { font-size: 20px; font-weight: 800; }
+    .app-bar-title { font-size: 20px; font-weight: 800; flex: 1; min-width: 0; }
+    .profile-btn {
+      display: flex; align-items: center; gap: 8px;
+      max-width: 55%;
+      padding: 3px 3px 3px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      font: inherit; font-size: 14px; font-weight: 700; color: #334155;
+      cursor: pointer;
+    }
+    .profile-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      object-fit: cover;
+      background: #dbeafe; color: #1e3a8a;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+    }
+    .avatar.big { width: 72px; height: 72px; font-size: 30px; }
+    .profile-head { display: flex; align-items: center; gap: 14px; }
+    .profile-name { font-size: 18px; font-weight: 800; }
+    .profile-email { font-size: 13px; color: var(--muted); word-break: break-all; }
+    .tab-strip {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      background: #e2e8f0;
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 12px;
+    }
+    .tab-strip button {
+      position: relative; z-index: 1;
+      border: none; background: none;
+      padding: 9px 4px;
+      font: inherit; font-size: 14px; font-weight: 700; color: #475569;
+      cursor: pointer;
+    }
+    .tab-strip button.active { color: var(--primary); }
+    .tab-ink {
+      position: absolute; top: 4px; bottom: 4px; left: 4px;
+      width: calc((100% - 8px) / 3);
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      transition: transform 0.22s ease;
+    }
+    .swipe-in-left { animation: swipeInLeft 0.22s ease; }
+    .swipe-in-right { animation: swipeInRight 0.22s ease; }
+    @keyframes swipeInLeft { from { transform: translateX(40px); opacity: 0.3; } to { transform: none; opacity: 1; } }
+    @keyframes swipeInRight { from { transform: translateX(-40px); opacity: 0.3; } to { transform: none; opacity: 1; } }
+
+    /* ---- Yeni kayıt (+) düğmesi ---- */
+    .fab {
+      position: fixed;
+      right: max(18px, calc(50vw - 362px));
+      bottom: calc(22px + env(safe-area-inset-bottom));
+      width: 62px; height: 62px;
+      border-radius: 50%;
+      border: none;
+      background: var(--primary); color: #fff;
+      font-size: 34px; line-height: 1;
+      box-shadow: 0 6px 18px rgba(37,99,235,0.4);
+      cursor: pointer;
+      z-index: 910;
+      transition: transform 0.2s ease;
+    }
+    .fab.open { transform: rotate(45deg); background: #334155; box-shadow: 0 6px 18px rgba(15,23,42,0.3); }
+    .fab-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 900; }
+    .fab-menu {
+      position: fixed;
+      right: max(18px, calc(50vw - 362px));
+      bottom: calc(96px + env(safe-area-inset-bottom));
+      z-index: 910;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+    }
+    .fab-opt {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 18px;
+      border: none; border-radius: 999px;
+      background: #fff; color: var(--text);
+      font: inherit; font-size: 17px; font-weight: 700;
+      box-shadow: 0 4px 14px rgba(15,23,42,0.2);
+      cursor: pointer;
+      animation: swipeInLeft 0.18s ease;
+    }
+    .fab-opt span { font-size: 22px; }
+    #viewHome { padding-bottom: 80px; }
     @media (min-width: 900px) {
-      .side-nav { transform: none; box-shadow: none; }
-      .nav-overlay { display: none !important; }
-      .menu-btn { display: none; }
-      body { padding-left: 284px; }
-      body > *:not(.side-nav):not(.nav-overlay):not(.modal-backdrop):not(.toast):not(.lightbox):not(.login-screen) {
-        max-width: 760px;
-      }
+      body { max-width: 760px; margin: 0 auto; }
     }
 
     /* ---- Doktor raporu ---- */
@@ -164,7 +206,7 @@
     .report-list { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
     .report-list .alarm { color: var(--danger); font-weight: 700; }
     .report-muted { color: var(--muted); font-size: 14px; }
-    .lock-note { grid-column: 1 / -1; margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: #fff7e6; color: #6b4a00; font-size: 14px; font-weight: 600; }
+    .lock-note { grid-column: 1 / -1; padding: 8px 12px; border-radius: 10px; background: #fff7e6; color: #6b4a00; font-size: 14px; font-weight: 600; }
     .lock-banner { margin-bottom: 12px; padding: 14px; border-radius: 14px; background: #fff7e6; border: 1.5px solid #f5c26b; color: #5c3d00; font-size: 15px; line-height: 1.45; }
     .lock-banner button { margin-top: 10px; padding: 9px 14px; border-radius: 10px; border: 1.5px solid #d99a2b; background: #fff; color: #5c3d00; font: inherit; font-weight: 700; cursor: pointer; }
     #secBeslenme.locked > .card { opacity: .35; pointer-events: none; }
@@ -201,7 +243,7 @@
     .events-table td:first-child { white-space: nowrap; }
     .alarm-cell { color: var(--danger); font-weight: 700; }
     @media print {
-      .side-nav, .nav-overlay, .app-bar, .status-bar, .no-print, .print-btn, .err-banner, .toast { display: none !important; }
+      .app-bar, .tab-strip, .fab, .fab-menu, .fab-overlay, .status-bar, .no-print, .print-btn, .err-banner, .toast { display: none !important; }
       body { padding: 0 !important; background: #fff; }
       .report-section, .stat-tile { break-inside: avoid; }
       .table-scroll { overflow: visible; }
@@ -234,41 +276,50 @@
     }
 
     .status-bar {
-      background: #ecfdf5;
-      border: 1.5px solid #6ee7b7;
-      border-radius: 14px;
-      padding: 10px 12px;
-      margin-bottom: 12px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 10px;
+      margin-bottom: 12px;
       font-size: 13px;
     }
-    .status-item strong { display: block; font-size: 14px; color: #065f46; }
-    .status-sub { display: block; font-size: 12px; color: #047857; margin-top: 2px; font-weight: 600; }
+    .status-item {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border-top: 4px solid #60a5fa;
+      min-width: 0;
+    }
+    .status-item.tile-diaper { border-top-color: #34d399; }
+    .tile-label { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .status-item strong { display: block; font-size: 22px; font-weight: 800; color: var(--text); margin-top: 6px; line-height: 1.15; }
+    .tile-time { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+    .status-sub { display: block; font-size: 12px; color: #1e40af; margin-top: 8px; font-weight: 600; line-height: 1.35; }
     .next-feed-banner {
       grid-column: 1 / -1;
-      padding-top: 8px;
-      border-top: 1px dashed #6ee7b7;
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      font-size: 13px;
-      color: #065f46;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.28);
     }
+    .next-feed-banner.soon { background: linear-gradient(135deg, #f59e0b, #ea580c); box-shadow: 0 4px 14px rgba(234,88,12,0.28); }
+    .next-feed-banner.late { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 4px 14px rgba(185,28,28,0.28); }
     .next-feed-pill {
-      background: #d1fae5;
-      color: #065f46;
+      background: rgba(255,255,255,0.22);
+      color: #fff;
       border-radius: 999px;
-      padding: 3px 10px;
+      padding: 6px 12px;
+      font-size: 15px;
       font-weight: 800;
       white-space: nowrap;
     }
-    .next-feed-banner.soon .next-feed-pill { background: #fef3c7; color: #92400e; }
-    .next-feed-banner.late { color: #991b1b; }
-    .next-feed-banner.late .next-feed-pill { background: #fee2e2; color: #991b1b; }
     .plan-sub { font-size: 14px; color: #334155; margin-bottom: 14px; line-height: 1.4; }
     .plan-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-bottom: 6px; }
     .plan-step {
@@ -287,8 +338,10 @@
     .plan-at { font-size: 15px; font-weight: 700; color: #334155; margin-top: 2px; }
     .cream-banner {
       grid-column: 1 / -1;
-      padding-top: 8px;
-      border-top: 1px dashed #6ee7b7;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: #ecfdf5;
+      gap: 8px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -296,6 +349,7 @@
       color: #065f46;
     }
     .cream-banner.due {
+      background: #fef2f2;
       color: #991b1b;
       font-weight: 700;
     }
@@ -306,6 +360,7 @@
       color: #065f46;
       font-weight: 800;
       font-size: 12px;
+      white-space: nowrap;
     }
     .cream-banner.due .cream-pill {
       background: #fee2e2;
@@ -1091,23 +1146,23 @@
 
   <div id="toast" class="toast hidden">Kaydedildi 👶 Teşekkürler!</div>
 
-  <!-- SOL PANEL (mobilde çekmece, geniş ekranda sabit) -->
-  <div id="navOverlay" class="nav-overlay hidden"></div>
-  <nav id="sideNav" class="side-nav" aria-label="Ana menü">
-    <div class="nav-brand">👶 Bebek Takip</div>
-    <button type="button" class="nav-item active" data-nav="new"><span>➕</span> Yeni Kayıt</button>
-    <button type="button" class="nav-item" data-nav="history"><span>📋</span> Geçmiş Kayıtlar</button>
-    <button type="button" class="nav-item" data-nav="report"><span>🩺</span> Doktor Raporu</button>
-    <button type="button" class="nav-item" data-nav="notify"><span>🔔</span> Bildirimler</button>
-    <div class="nav-footer">
-      <div id="accountLine" class="account-line hidden"><span id="accountEmail"></span><button type="button" id="btnLogout">Çıkış</button></div>
-    </div>
-  </nav>
-
   <!-- ÜST ÇUBUK -->
   <div class="app-bar">
-    <button type="button" class="menu-btn" id="btnMenu" aria-label="Menüyü aç">☰</button>
-    <div class="app-bar-title" id="appBarTitle">Yeni Kayıt</div>
+    <button type="button" class="back-btn hidden" id="btnBack" aria-label="Geri">‹</button>
+    <div class="app-bar-title" id="appBarTitle">👶 Bebek Takip</div>
+    <button type="button" class="profile-btn hidden" id="btnProfile" data-nav="profile" aria-label="Profil ve ayarlar">
+      <span id="profileName"></span>
+      <img class="avatar hidden" id="profileImg" alt="" referrerpolicy="no-referrer">
+      <div class="avatar" id="profileInitial">?</div>
+    </button>
+  </div>
+
+  <!-- KAYDIRILABİLİR SAYFALAR: Ana Sayfa / Geçmiş / Rapor -->
+  <div class="tab-strip" id="tabStrip">
+    <div class="tab-ink" id="tabInk"></div>
+    <button type="button" data-nav="home" class="active">🏠 Ana Sayfa</button>
+    <button type="button" data-nav="history">📋 Geçmiş</button>
+    <button type="button" data-nav="report">🩺 Rapor</button>
   </div>
 
   <div id="loginScreen" class="login-screen hidden">
@@ -1120,32 +1175,46 @@
 
   <div id="errBanner" class="err-banner hidden"></div>
 
-  <!-- SON DURUM ÖZET ÇUBUĞU -->
   <div class="outbox-bar hidden" id="outboxBar"></div>
-  <div class="status-bar" id="statusBar">
-    <div class="status-item">
-      Son Beslenme
-      <strong id="stFeed">Yükleniyor...</strong>
-      <span class="status-sub" id="stFeedSub"></span>
-    </div>
-    <div class="status-item">
-      Son Bez
-      <strong id="stDiaper">Yükleniyor...</strong>
-      <span class="status-sub" id="stDiaperSub"></span>
-    </div>
-    <div class="next-feed-banner hidden" id="nextFeedBanner">
-      <span id="stNextFeedText">🍼 Sonraki beslenme</span>
-      <span class="next-feed-pill" id="stNextFeedBadge">-</span>
-    </div>
-    <div class="lock-note hidden" id="lockNote"></div>
-    <div class="cream-banner" id="creamBanner">
-      <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
-      <span class="cream-pill" id="stCreamBadge">-</span>
+
+  <!-- ANA SAYFA: son durum -->
+  <div id="viewHome">
+    <div class="status-bar" id="statusBar">
+      <div class="lock-note hidden" id="lockNote"></div>
+      <div class="next-feed-banner hidden" id="nextFeedBanner">
+        <span id="stNextFeedText">🍼 Sonraki beslenme</span>
+        <span class="next-feed-pill" id="stNextFeedBadge">-</span>
+      </div>
+      <div class="status-item tile-feed">
+        <div class="tile-label">🍼 Son Beslenme</div>
+        <strong id="stFeed">Yükleniyor...</strong>
+        <span class="tile-time" id="stFeedTime"></span>
+        <span class="status-sub" id="stFeedSub"></span>
+      </div>
+      <div class="status-item tile-diaper">
+        <div class="tile-label">🧷 Son Bez</div>
+        <strong id="stDiaper">Yükleniyor...</strong>
+        <span class="tile-time" id="stDiaperTime"></span>
+        <span class="status-sub" id="stDiaperSub"></span>
+      </div>
+      <div class="cream-banner" id="creamBanner">
+        <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
+        <span class="cream-pill" id="stCreamBadge">-</span>
+      </div>
     </div>
   </div>
 
+  <!-- YENİ KAYIT (+) -->
+  <button type="button" class="fab" id="fab" aria-label="Yeni kayıt">+</button>
+  <div class="fab-overlay hidden" id="fabOverlay"></div>
+  <div class="fab-menu hidden" id="fabMenu">
+    <button type="button" class="fab-opt" data-newtype="Diğer"><span>🩺</span> Diğer (ilaç, ateş)</button>
+    <button type="button" class="fab-opt" data-newtype="Bez"><span>🧷</span> Bez</button>
+    <button type="button" class="fab-opt" data-newtype="Beslenme"><span>🍼</span> Beslenme</button>
+  </div>
+
   <!-- SEKME 1: YENİ KAYIT FORMU -->
-  <div id="viewNewRecord">
+  <div id="viewNewRecord" class="hidden">
     <div class="card">
       <label class="sec-title">Formu Dolduran</label>
       <select id="dolduran">
@@ -1394,8 +1463,23 @@
     <div id="reportBody"></div>
   </div>
 
-  <!-- SEKME 4: BİLDİRİMLER -->
+  <!-- PROFİL: hesap, bildirimler, ayarlar -->
   <div id="viewNotify" class="hidden">
+    <div class="card">
+      <div class="profile-head">
+        <img class="avatar big hidden" id="profileImgBig" alt="" referrerpolicy="no-referrer">
+        <div class="avatar big" id="profileInitialBig">?</div>
+        <div style="min-width:0;">
+          <div class="profile-name" id="profileNameBig"></div>
+          <div class="profile-email" id="accountEmail"></div>
+        </div>
+      </div>
+      <div class="notify-row" style="margin-top:14px;">
+        <button type="button" class="notify-btn ghost" id="btnLogout">Çıkış yap</button>
+      </div>
+    </div>
+
+    <label class="sec-title" style="margin:18px 4px 8px;">🔔 Bildirimler</label>
     <div class="card">
       <label class="sec-title">📱 Bu Cihaz</label>
       <div class="notify-status" id="notifyDeviceStatus">Kontrol ediliyor...</div>
@@ -1964,7 +2048,8 @@
         pushOffForLogout().then(done, done);
         ['bt_boot', 'bt_status', HIST_CACHE_KEY].forEach(function(k) { try { localStorage.removeItem(k); } catch (e) {} });
         try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) {}
-        $('accountLine').classList.add('hidden');
+        $('btnProfile').classList.add('hidden');
+        switchTab('home');
         showLogin('');
       }
 
@@ -2006,43 +2091,91 @@
 
       /* ---------------- SEKMELER & GEÇMİŞ ---------------- */
 
+      // PAGES: sağa-sola kaydırılarak geçilen sayfalar (sırası önemli)
+      var PAGES = ['home', 'history', 'report'];
       var VIEWS = {
-        'new':     { el: 'viewNewRecord', title: 'Yeni Kayıt',        status: true },
-        'history': { el: 'viewHistory',   title: 'Geçmiş Kayıtlar',   status: false },
-        'report':  { el: 'viewReport',    title: 'Doktor Raporu',     status: false },
-        'notify':  { el: 'viewNotify',    title: 'Bildirimler',       status: false }
+        'home':    { el: 'viewHome',      title: '👶 Bebek Takip' },
+        'history': { el: 'viewHistory',   title: '👶 Bebek Takip' },
+        'report':  { el: 'viewReport',    title: '👶 Bebek Takip' },
+        'new':     { el: 'viewNewRecord', title: 'Yeni Kayıt' },
+        'profile': { el: 'viewNotify',    title: 'Profil ve Ayarlar' }
       };
 
-      var currentTab = 'new';
+      var currentTab = 'home';
       function switchTab(name, fromHistory) {
-        if (!VIEWS[name]) name = 'new';
+        if (!VIEWS[name]) name = 'home';
         if (!fromHistory && name !== currentTab) {
           try { history.pushState({ tab: name }, ''); } catch (e) {}
         }
+        var from = PAGES.indexOf(currentTab), to = PAGES.indexOf(name);
         currentTab = name;
+        closeFab();
         for (var k in VIEWS) $(VIEWS[k].el).classList.toggle('hidden', k !== name);
-        var items = document.querySelectorAll('[data-nav]');
+        var view = $(VIEWS[name].el);
+        view.classList.remove('swipe-in-left', 'swipe-in-right');
+        if (from >= 0 && to >= 0 && from !== to) { void view.offsetWidth; view.classList.add(to > from ? 'swipe-in-left' : 'swipe-in-right'); }
+        var items = $('tabStrip').querySelectorAll('[data-nav]');
         for (var i = 0; i < items.length; i++) items[i].classList.toggle('active', items[i].getAttribute('data-nav') === name);
+        $('tabInk').style.transform = 'translateX(' + (Math.max(0, to) * 100) + '%)';
+        $('tabStrip').classList.toggle('hidden', to < 0);
+        $('btnBack').classList.toggle('hidden', to >= 0);
+        $('fab').classList.toggle('hidden', name !== 'home');
         $('appBarTitle').textContent = VIEWS[name].title;
-        $('statusBar').classList.toggle('hidden', !VIEWS[name].status);
-        closeNav();
         window.scrollTo(0, 0);
         if (name === 'history') { state.currentPage = 1; loadHistory(); }
         if (name === 'report') initReport();
-        if (name === 'notify') initNotify();
+        if (name === 'profile') initNotify();
       }
 
-      /* ---------------- SOL PANEL ---------------- */
+      /* ---------------- YENİ KAYIT (+) MENÜSÜ ---------------- */
 
-      function openNav() {
-        $('sideNav').classList.add('open');
-        $('navOverlay').classList.remove('hidden');
+      function fabOpen() { return !$('fabMenu').classList.contains('hidden'); }
+      function toggleFab(open) {
+        $('fab').classList.toggle('open', open);
+        $('fabMenu').classList.toggle('hidden', !open);
+        $('fabOverlay').classList.toggle('hidden', !open);
+      }
+      function closeFab() { toggleFab(false); }
+
+      function openNewRecord(type) {
+        closeFab();
+        switchTab('new');
+        if (type && type !== state.kayitTuru) selectType(type);
+        saveDraftNow();
       }
 
-      function closeNav() {
-        $('sideNav').classList.remove('open');
-        $('navOverlay').classList.add('hidden');
+      /* ---------------- KAYDIRMA (swipe) ---------------- */
+
+      // Yatay kayan bir alanın (tablo, filtre şeridi) içindeyse sayfa değiştirme
+      function inHScroll(el) {
+        while (el && el !== document.body) {
+          if (el.scrollWidth > el.clientWidth + 1) {
+            var ox = getComputedStyle(el).overflowX;
+            if (ox === 'auto' || ox === 'scroll') return true;
+          }
+          el = el.parentNode;
+        }
+        return false;
       }
+
+      var swipe = null;
+      document.addEventListener('touchstart', function(e) {
+        swipe = null;
+        if (e.touches.length !== 1 || PAGES.indexOf(currentTab) < 0 || anyModalOpen() || fabOpen()) return;
+        if (inHScroll(e.target)) return;
+        var x0 = e.touches[0].clientX;
+        if (x0 < 24 || x0 > window.innerWidth - 24) return;   // ekran kenarı Android'in geri hareketine ait
+        swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+      }, { passive: true });
+      document.addEventListener('touchend', function(e) {
+        if (!swipe) return;
+        var t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+        var quick = Date.now() - swipe.t < 700;
+        swipe = null;
+        if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        var i = PAGES.indexOf(currentTab) + (dx < 0 ? 1 : -1);
+        if (i >= 0 && i < PAGES.length) switchTab(PAGES[i]);
+      }, { passive: true });
 
       /* ---------------- DOKTOR RAPORU ---------------- */
 
@@ -3323,17 +3456,22 @@
         return m + ' dk önce';
       }
 
+      function setLast(id, time, ago) {
+        $(id).textContent = ago || time;
+        $(id + 'Time').textContent = ago ? '🕒 ' + time : '';
+      }
+
       var lastStatus = null;
       function refreshAgo() {
         var res = lastStatus;
         if (!res) return;
         if (res.lastFeedTime) {
           var fa = res.lastFeedTs ? agoText(res.lastFeedTs) : res.feedAgo;
-          $('stFeed').textContent = res.lastFeedTime + (fa ? ' (' + fa + ')' : '');
+          setLast('stFeed', res.lastFeedTime, fa);
         }
         if (res.lastDiaperTime) {
           var da = res.lastDiaperTs ? agoText(res.lastDiaperTs) : res.diaperAgo;
-          $('stDiaper').textContent = res.lastDiaperTime + (da ? ' (' + da + ')' : '');
+          setLast('stDiaper', res.lastDiaperTime, da);
         }
       }
       setInterval(refreshAgo, 30000);
@@ -3345,9 +3483,9 @@
           cacheSet('bt_status', res);
           setTimeout(function() { maybeShowCreamPopup(res); }, 300);
         }
-        var feedEl = $('stFeed'), feedSub = $('stFeedSub');
+        var feedSub = $('stFeedSub');
         if (res.lastFeedTime) {
-          feedEl.textContent = res.lastFeedTime + (res.feedAgo ? ' (' + res.feedAgo + ')' : '');
+          setLast('stFeed', res.lastFeedTime, res.feedAgo);
           if (res.lastBreast) {
             var tm = Number(res.tailMinutes || 0);
             feedSub.textContent = 'Son meme: ' + res.lastBreast + ' (' + tm + ' dk) → Sıradaki: ' + res.nextBreast +
@@ -3356,7 +3494,7 @@
             feedSub.textContent = '';
           }
         } else {
-          feedEl.textContent = 'Henüz kayıt yok';
+          setLast('stFeed', 'Henüz kayıt yok', '');
           feedSub.textContent = '';
         }
         state.nextBreast = res.nextBreast || '';
@@ -3366,9 +3504,7 @@
         state.breastTail = { side: res.tailSide || res.lastBreast || '', minutes: Number(res.tailMinutes || 0) };
         if (Number(res.minBreastMin) > 0) state.minBreast = Number(res.minBreastMin);
 
-        var diaperEl = $('stDiaper');
-        if (res.lastDiaperTime) diaperEl.textContent = res.lastDiaperTime + (res.diaperAgo ? ' (' + res.diaperAgo + ')' : '');
-        else diaperEl.textContent = 'Henüz kayıt yok';
+        setLast('stDiaper', res.lastDiaperTime || 'Henüz kayıt yok', res.lastDiaperTime ? res.diaperAgo : '');
         $('stDiaperSub').textContent = '';
 
         var banner = $('creamBanner'), cText = $('stCreamText'), cBadge = $('stCreamBadge');
@@ -3417,11 +3553,24 @@
         });
       }
 
+      function showProfile(res) {
+        var name = res.defaultName || res.displayName || res.email.split('@')[0];
+        $('profileName').textContent = name;
+        $('profileNameBig').textContent = name;
+        $('accountEmail').textContent = res.email;
+        $('profileInitial').textContent = $('profileInitialBig').textContent = name.charAt(0).toLocaleUpperCase('tr');
+        [['profileImg', 'profileInitial'], ['profileImgBig', 'profileInitialBig']].forEach(function(p) {
+          var img = $(p[0]);
+          img.onerror = function() { img.classList.add('hidden'); $(p[1]).classList.remove('hidden'); };
+          if (res.photo) img.src = res.photo;
+          img.classList.toggle('hidden', !res.photo);
+          $(p[1]).classList.toggle('hidden', !!res.photo);
+        });
+        $('btnProfile').classList.remove('hidden');
+      }
+
       function applyBoot(res) {
-        if (res.email) {
-          $('accountEmail').textContent = '👤 ' + res.email;
-          $('accountLine').classList.remove('hidden');
-        }
+        if (res.email) showProfile(res);
         var sel = $('dolduran'), cur = sel.value;
         fillPeople(res.people || []);
         var saved = null;
@@ -3463,7 +3612,7 @@
         renderOutbox();
         runApi().withSuccessHandler(function(res) {
           showError('');
-          cacheSet('bt_boot', { email: res.email, people: res.people, defaultName: res.defaultName });
+          cacheSet('bt_boot', { email: res.email, photo: res.photo, displayName: res.displayName, people: res.people, defaultName: res.defaultName });
           applyBoot(res);
           renderStatus(res.status);
           startLive();
@@ -3588,7 +3737,6 @@
           if (e.target && e.target.id === 'timeModalBackdrop') { closeTimeModal(); return; }
           if (e.target && e.target.id === 'feedModalBackdrop') { closeFeedModal(); return; }
           if (e.target && e.target.id === 'detailModalBackdrop') { closeDetailModal(); return; }
-          if (e.target && e.target.id === 'navOverlay') { closeNav(); return; }
           if (e.target && e.target.id === 'planModalBackdrop') { cancelPlan(); return; }
           if (e.target && e.target.id === 'creamModalBackdrop') { hideModal('creamModalBackdrop'); return; }
           if (e.target && e.target.getAttribute && e.target.getAttribute('data-lightbox')) { openLightbox(e.target.src); return; }
@@ -3611,12 +3759,15 @@
           var histCard = findParentHistCard(e.target);
           if (histCard) { openRecordDetail(Number(histCard.getAttribute('data-detail-idx'))); return; }
 
+          if (e.target.id === 'fabOverlay') { closeFab(); return; }
           var target = findParentButton(e.target);
           if (!target) return;
 
           if (target.id === 'btnCloseLightbox') { closeLightbox(); return; }
           if (target.id === 'btnLogout') { if (confirm('Çıkış yapılsın mı?')) logout(); return; }
-          if (target.id === 'btnMenu') { openNav(); return; }
+          if (target.id === 'btnBack') { history.back(); return; }
+          if (target.id === 'fab') { toggleFab(!fabOpen()); return; }
+          if (target.hasAttribute('data-newtype')) { openNewRecord(target.getAttribute('data-newtype')); return; }
           if (target.hasAttribute('data-planstep')) {
             plan.minutes = Math.min(12 * 60, Math.max(15, plan.minutes + Number(target.getAttribute('data-planstep'))));
             renderPlan();
@@ -3801,8 +3952,8 @@
       document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') saveDraftNow(); });
       window.addEventListener('popstate', function(e) {
         // Android geri tuşu: önce açık pencere/menüyü kapat, sonra önceki sekmeye dön
-        closeNav();
-        if (anyModalOpen()) {
+        if (fabOpen() || anyModalOpen()) {
+          closeFab();
           if (openModals.planModalBackdrop) cancelPlan();
           if (openModals.creamModalBackdrop) hideModal('creamModalBackdrop');
           if (openModals.timeModalBackdrop) closeTimeModal();
@@ -3811,7 +3962,7 @@
           try { history.pushState({ tab: currentTab }, ''); } catch (err) {}
           return;
         }
-        var tab = (e.state && e.state.tab) || 'new';
+        var tab = (e.state && e.state.tab) || 'home';
         switchTab(tab, true);
       });
 
@@ -3915,7 +4066,8 @@
         var btn = $('submitBtn');
         btn.disabled = false;
         btn.textContent = 'KAYDET';
-        switchTab('new');
+        if (pending) switchTab('new');
+        else if (currentTab === 'new') history.back();   // formu açan sayfaya (ana sayfa) dön
         window.scrollTo(0, 0);
         saveDraftNow();
         if (pending) setTimeout(function() { showToast('Yarım kalan ' + pending.toLowerCase() + ' kaydınız duruyor ✍️'); }, 2200);
@@ -3974,7 +4126,7 @@
           state.selectedHour = d.h; state.selectedMinute = d.m; state.timeTouched = true;
           updateTriggerButton();
         }
-        if (d.kayitTuru) showToast('Yarım kalan kaydınız geri yüklendi ✍️');
+        if (d.kayitTuru) { switchTab('new'); showToast('Yarım kalan kaydınız geri yüklendi ✍️'); }
       }
 
       /* ---------------- SONRAKİ BESLENME PLANI ---------------- */
@@ -4488,7 +4640,7 @@
       buildWheel($('wheelMinute'), 60, false);
       setNow();
       // Geri tuşu için alta bir koruma kaydı: pencere açıkken geri tuşu uygulamadan çıkmasın, pencereyi kapatsın
-      try { history.replaceState({ tab: 'new', root: true }, ''); history.pushState({ tab: 'new' }, ''); } catch (e) {}
+      try { history.replaceState({ tab: 'home', root: true }, ''); history.pushState({ tab: 'home' }, ''); } catch (e) {}
       restoreDraft();
       if (!CFG.FIREBASE || !CFG.CLIENT_ID) {
         showError('Kurulum eksik: config.js içinde FIREBASE ve CLIENT_ID doldurulmalı.');

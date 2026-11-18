@@ -49,7 +49,7 @@ service cloud.firestore {
       allow create, update: if allowed()
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
-        && request.resource.data.times is list && request.resource.data.times.size() <= 4
+        && request.resource.data.times is list && request.resource.data.times.size() <= 12
         && request.resource.data.active is bool;
     }
 

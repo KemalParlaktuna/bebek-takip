@@ -189,6 +189,8 @@
     .med-set-row small { display: block; color: var(--muted); }
     .med-times { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .med-times input { width: 100%; }
+    .med-stepper { display: flex; align-items: center; gap: 16px; }
+    .med-stepper b { min-width: 2ch; text-align: center; font-size: 1.2em; }
     .fab-opt.current { background: #dbeafe; color: #1e3a8a; }
     .fab-opt.has-draft::after { content: '✍️'; font-size: 15px; }
     .draft-card {
@@ -1232,10 +1234,7 @@
         <span class="status-sub" id="stDiaperSub"></span>
       </div>
       <div class="med-card hidden" id="medCard"></div>
-      <div class="cream-banner" id="creamBanner">
-        <span id="stCreamText">🧴 Pişik kremi durumu yükleniyor...</span>
-        <span class="cream-pill" id="stCreamBadge">-</span>
-      </div>
+      <div id="diaperMeds"></div>
     </div>
   </div>
 
@@ -1286,7 +1285,7 @@
           <button type="button" class="chip danger" data-val="Belirgin">Belirgin</button>
         </div>
 
-        <label class="sec-title" style="margin-top:14px;">🧴 Pişik Kremi Sürüldü mü? (Her 3 bezde 1)</label>
+        <label class="sec-title" style="margin-top:14px;">🧴 Pişik Kremi Sürüldü mü?</label>
         <div class="chip-grid" data-group="pisikKremi">
           <button type="button" class="chip" data-val="Evet">✅ Evet, sürüldü</button>
           <button type="button" class="chip active" data-val="Hayır">❌ Hayır</button>
@@ -1820,16 +1819,27 @@
       </div>
       <div class="edit-field">
         <label>Ne sıklıkla?</label>
-        <div class="chip-grid cols-3" id="medFreqGroup">
-          <button type="button" class="chip" data-medfreq="0">Gerektiğinde</button>
-          <button type="button" class="chip" data-medfreq="1">Günde 1</button>
-          <button type="button" class="chip" data-medfreq="2">Günde 2</button>
-          <button type="button" class="chip" data-medfreq="3">Günde 3</button>
-          <button type="button" class="chip" data-medfreq="4">Günde 4</button>
+        <div class="chip-grid" id="medFreqGroup">
+          <button type="button" class="chip" data-medmode="need">Gerektiğinde</button>
+          <button type="button" class="chip" data-medmode="daily">Günde X kez</button>
+          <button type="button" class="chip" data-medmode="days">X günde 1</button>
+          <button type="button" class="chip" data-medmode="diapers">X bezde 1</button>
         </div>
       </div>
+      <div class="edit-field hidden" id="medEveryBox">
+        <label id="medEveryLabel">Kaç?</label>
+        <div class="med-stepper">
+          <button type="button" class="mini-ctrl-btn" data-med-step="-1" aria-label="Azalt">−</button>
+          <b id="medEvery">1</b>
+          <button type="button" class="mini-ctrl-btn" data-med-step="1" aria-label="Artır">+</button>
+        </div>
+      </div>
+      <div class="edit-field hidden" id="medStartBox">
+        <label for="medStartDate">Başlangıç günü</label>
+        <input type="date" id="medStartDate">
+      </div>
       <div class="edit-field hidden" id="medTimesBox">
-        <label>Tahmini verme saatleri</label>
+        <label id="medTimesLabel">Verme saatleri</label>
         <div class="med-times" id="medTimes"></div>
       </div>
       <div class="modal-actions cols-3">
@@ -3610,26 +3620,6 @@
 
         setLast('stDiaper', res.lastDiaperTime || 'Henüz kayıt yok', res.lastDiaperTime ? res.diaperAgo : '');
         $('stDiaperSub').textContent = '';
-
-        var banner = $('creamBanner'), cText = $('stCreamText'), cBadge = $('stCreamBadge');
-        var count = Number(res.diapersSinceCream || 0);
-        if (!res.hasAnyDiaper) {
-          banner.classList.remove('due');
-          cText.textContent = '🧴 Henüz bez kaydı yok';
-          cBadge.textContent = '-';
-        } else if (!res.hasAnyCreamRecord && count < 2) {
-          banner.classList.remove('due');
-          cText.textContent = '🧴 Henüz krem kaydı yok';
-          cBadge.textContent = count + ' bez';
-        } else if (count >= 2) {
-          banner.classList.add('due');
-          cText.textContent = '🧴 Krem zamanı! Son kremden beri ' + count + ' bez geçti';
-          cBadge.textContent = (count + 1) + '. bez (Sürün)';
-        } else {
-          banner.classList.remove('due');
-          cText.textContent = count === 0 ? '🧴 Son bezde pişik kremi sürüldü' : '🧴 Son kremden beri ' + count + ' bez geçti';
-          cBadge.textContent = count + ' / 3 bez';
-        }
       }
 
       function statusFailed(err) {
@@ -3766,7 +3756,7 @@
         cacheSet('bt_meds', list);
         renderMedChips();
         renderMedSettings();
-        renderMeds();
+        if (lastStatus) renderStatus(lastStatus); else renderMeds();   // krem kartı ilaç listesine de bağlı
       }
 
       // Formdaki ilaç düğmeleri listeden gelir; listede olmayan eski seçim temizlenir
@@ -3779,7 +3769,15 @@
         }).join('');
       }
 
-      function freqText(m) { return m.times && m.times.length ? 'Günde ' + m.times.length + ': ' + m.times.join(', ') : 'Gerektiğinde (hatırlatma yok)'; }
+      function freqText(m) {
+        var mode = BE ? BE.medMode(m) : (m.times && m.times.length ? 'daily' : 'need'), t;
+        if (mode === 'daily') t = 'Günde ' + m.times.length + ': ' + m.times.join(', ');
+        else if (mode === 'days') t = m.every + ' günde 1, ' + m.times[0];
+        else if (mode === 'diapers') t = m.every + ' bezde 1';
+        else return 'Gerektiğinde (hatırlatma yok)';
+        if (m.startDate) t += ' · ' + m.startDate.split('-').reverse().join('/') + "'den itibaren";
+        return t;
+      }
 
       function renderMedSettings() {
         $('medSettingsList').innerHTML = medList.length ? medList.map(function(m, i) {
@@ -3791,7 +3789,17 @@
       // Ana sayfa: bugünkü dozlar
       function renderMeds() {
         var card = $('medCard');
-        var doses = BE && lastStatus ? BE.medDoses(medList, lastStatus.medEvents || [], Date.now()) : [];
+        var all = BE && lastStatus ? BE.medDoses(medList, lastStatus.medEvents || [], Date.now(), lastStatus.diaperTimes || []) : [];
+        // Bezle takip edilenler krem sayacı gibi ayrı şeritte: "son verilişten beri X bez"
+        $('diaperMeds').innerHTML = all.filter(function(d) { return !d.time; }).map(function(d) {
+          var due = d.state !== 'upcoming';
+          var text = due ? '💊 ' + d.name + ' zamanı! Son verilişten beri ' + d.diapers + ' bez geçti'
+            : '💊 ' + d.name + ': ' + (d.diapers ? 'son verilişten beri ' + d.diapers + ' bez geçti' : 'son bezde verildi');
+          return '<div class="cream-banner' + (due ? ' due' : '') + '"><span>' + esc(text) + '</span>' +
+            '<span class="cream-pill">' + (due ? (d.diapers + 1) + '. bez (Verin)' : d.diapers + ' / ' + d.every + ' bez') + '</span>' +
+            (due ? '<button type="button" class="med-give" data-med-give="' + esc(d.name) + '">Kaydet</button>' : '') + '</div>';
+        }).join('');
+        var doses = all.filter(function(d) { return d.time; });
         card.classList.toggle('hidden', !doses.length);
         if (!doses.length) return;
         var worst = doses.some(function(d) { return d.state === 'late'; }) ? 'late' : doses.some(function(d) { return d.state === 'due'; }) ? 'due' : '';
@@ -3818,38 +3826,68 @@
         saveDraftNow();
       }
 
-      var medEditing = null;
-      function setMedFreq(n, times) {
-        var cur = Array.prototype.map.call($('medTimes').querySelectorAll('input'), function(x) { return x.value; });
-        times = times || MED_DEFAULT_TIMES[n] || [];
-        setActiveChip($('medFreqGroup'), document.querySelector('[data-medfreq="' + n + '"]'));
-        $('medTimesBox').classList.toggle('hidden', !n);
+      var medEditing = null, medMode = 'need';
+      function todayIso() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+      function medTimeInputs() { return Array.prototype.map.call($('medTimes').querySelectorAll('input'), function(x) { return x.value; }); }
+
+      // Saat kutuları: "günde N kez"de N tane (ilk saatten eşit aralıklı önerilir), "N günde 1"de tek
+      function renderMedTimes(keep) {
+        var cur = keep || medTimeInputs();
+        var n = medMode === 'daily' ? Number($('medEvery').textContent) : medMode === 'days' ? 1 : 0;
+        var first = cur[0] || '09:00', fh = Number(first.slice(0, 2)), fm = first.slice(3);
         var h = '';
-        for (var i = 0; i < n; i++) h += '<input type="time" value="' + (cur[i] || times[i]) + '" aria-label="' + (i + 1) + '. doz saati">';
+        for (var i = 0; i < n; i++) {
+          var v = cur[i] || pad2(Math.floor(fh + i * 24 / n) % 24) + ':' + fm;
+          h += '<input type="time" value="' + v + '" aria-label="' + (i + 1) + '. doz saati">';
+        }
         $('medTimes').innerHTML = h;
+        $('medTimesLabel').textContent = n > 1 ? 'Verme saatleri (ilki başlangıç saati)' : 'Verme saati';
+      }
+
+      function setMedMode(mode, every, times) {
+        medMode = mode;
+        setActiveChip($('medFreqGroup'), document.querySelector('[data-medmode="' + mode + '"]'));
+        if (every) $('medEvery').textContent = every;
+        $('medEveryLabel').textContent = { daily: 'Günde kaç kez?', days: 'Kaç günde bir?', diapers: 'Kaç bezde bir?' }[mode] || '';
+        $('medEveryBox').classList.toggle('hidden', mode === 'need');
+        $('medStartBox').classList.toggle('hidden', mode === 'need');
+        $('medTimesBox').classList.toggle('hidden', mode !== 'daily' && mode !== 'days');
+        if (!$('medStartDate').value) $('medStartDate').value = todayIso();
+        renderMedTimes(times);
+      }
+
+      function stepMedEvery(d) {
+        var n = Math.min(medMode === 'daily' ? 12 : 30, Math.max(1, Number($('medEvery').textContent) + d));
+        $('medEvery').textContent = n;
+        renderMedTimes(medTimeInputs().slice(0, 1));   // sayı değişince saatler ilk saatten yeniden önerilir
       }
 
       function openMedModal(idx) {
         medEditing = idx >= 0 ? medList[idx] : null;
+        var m = medEditing || { mode: 'daily', times: ['09:00'], every: 1 };
         $('medModalTitle').textContent = medEditing ? '💊 İlacı düzenle' : '💊 İlaç ekle';
         $('medNameInput').value = medEditing ? medEditing.name : '';
+        $('medStartDate').value = m.startDate || todayIso();
         $('medTimes').innerHTML = '';
-        var times = medEditing ? medEditing.times || [] : ['09:00'];
-        setMedFreq(times.length, times);
+        var mode = BE ? BE.medMode(m) : (m.mode || 'need');
+        setMedMode(mode, mode === 'daily' ? m.times.length : (m.every || 1), m.times || []);
         $('btnMedDelete').classList.toggle('hidden', !medEditing);
         showModal('medModalBackdrop');
       }
 
       function saveMed() {
         var name = $('medNameInput').value.trim().replace(/\s+/g, ' ');
-        var times = Array.prototype.map.call($('medTimes').querySelectorAll('input'), function(x) { return x.value; });
+        var times = medTimeInputs();
         if (!name) { alert('İlaç adını yazın.'); return; }
         if (times.some(function(t) { return !t; })) { alert('Her doz için saat seçin.'); return; }
+        if (medMode !== 'need' && !$('medStartDate').value) { alert('Başlangıç gününü seçin.'); return; }
         var dup = medList.some(function(m) { return m !== medEditing && m.name.toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'); });
         if (dup) { alert('Bu adla bir ilaç zaten var.'); return; }
+        var data = { name: name, mode: medMode, times: times, every: Number($('medEvery').textContent),
+          startDate: $('medStartDate').value };
         var btn = $('btnMedSave');
         btn.disabled = true;
-        backend().then(function(b) { return b.saveMed(medEditing && medEditing.id, { name: name, times: times }); })
+        backend().then(function(b) { return b.saveMed(medEditing && medEditing.id, data); })
           .then(function() { hideModal('medModalBackdrop'); showToast('İlaç kaydedildi 💊'); }, function(err) { alert('Kaydedilemedi: ' + errMsg(err)); })
           .then(function() { btn.disabled = false; });
       }
@@ -3981,7 +4019,8 @@
           if (target.hasAttribute('data-newtype')) { openNewRecord(target.getAttribute('data-newtype')); return; }
           if (target.id === 'btnMedAdd') { openMedModal(-1); return; }
           if (target.hasAttribute('data-med-edit')) { openMedModal(Number(target.getAttribute('data-med-edit'))); return; }
-          if (target.hasAttribute('data-medfreq')) { setMedFreq(Number(target.getAttribute('data-medfreq'))); return; }
+          if (target.hasAttribute('data-medmode')) { setMedMode(target.getAttribute('data-medmode')); return; }
+          if (target.hasAttribute('data-med-step')) { stepMedEvery(Number(target.getAttribute('data-med-step'))); return; }
           if (target.id === 'btnMedSave') { saveMed(); return; }
           if (target.id === 'btnMedCancel') { hideModal('medModalBackdrop'); return; }
           if (target.id === 'btnMedDelete') { deleteMed(); return; }

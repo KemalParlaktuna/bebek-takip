@@ -2025,7 +2025,7 @@
       var BE = null, bePromise = null, signedIn = false;
       function backend() {
         if (!bePromise) {
-          bePromise = import('./firebase-app.js').then(function(m) { m.init(CFG.FIREBASE); BE = m; return m; });
+          bePromise = import('./firebase-app.js?v=39')  /* sürüm: tarayıcı önbelleğindeki eski modül kullanılmasın */.then(function(m) { m.init(CFG.FIREBASE); BE = m; return m; });
           bePromise.catch(function() { bePromise = null; });
         }
         return bePromise;
@@ -3770,7 +3770,7 @@
       }
 
       function freqText(m) {
-        var mode = BE ? BE.medMode(m) : (m.times && m.times.length ? 'daily' : 'need'), t;
+        var mode = medModeOf(m), t;
         if (mode === 'daily') t = 'Günde ' + m.times.length + ': ' + m.times.join(', ');
         else if (mode === 'days') t = m.every + ' günde 1, ' + m.times[0];
         else if (mode === 'diapers') t = m.every + ' bezde 1';
@@ -3827,6 +3827,8 @@
       }
 
       var medEditing = null, medMode = 'need';
+      // logic.js medMode ile aynı; önbellekte eski firebase-app.js kalsa da pencere açılsın diye burada
+      function medModeOf(m) { return ['need', 'daily', 'days', 'diapers'].indexOf(m.mode) >= 0 ? m.mode : (m.times && m.times.length ? 'daily' : 'need'); }
       function todayIso() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
       function medTimeInputs() { return Array.prototype.map.call($('medTimes').querySelectorAll('input'), function(x) { return x.value; }); }
 
@@ -3869,7 +3871,7 @@
         $('medNameInput').value = medEditing ? medEditing.name : '';
         $('medStartDate').value = m.startDate || todayIso();
         $('medTimes').innerHTML = '';
-        var mode = BE ? BE.medMode(m) : (m.mode || 'need');
+        var mode = medModeOf(m);
         setMedMode(mode, mode === 'daily' ? m.times.length : (m.every || 1), m.times || []);
         $('btnMedDelete').classList.toggle('hidden', !medEditing);
         showModal('medModalBackdrop');

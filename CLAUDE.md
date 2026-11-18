@@ -69,7 +69,8 @@ yazıp Playwright ile `index.html`'i açmak iyi çalıştı.
 - Kayıt türleri: Bez (durum, pişik, krem, kaka miktarı/rengi/kıvamı, fotoğraf), Beslenme (meme/mama/sağılmış süt kalemleri,
   aralarda gaz, sonraki beslenme planı popup'ı: varsayılan 2,5 sa, ±15 dk), Diğer (ilaç seçimi listeden, ateş).
 - 15 dk meme kuralı: aynı tarafta toplam <15 dk ise sonraki emzirme o memeyle başlar, kalan süre gösterilir.
-- Pişik kremi sayacı durum kartında görünür; krem için popup ve bildirim **istenmedi** (kapalı).
+- İlaç planı: gerektiğinde / günde X kez / X günde 1 / X bezde 1; sayı, başlangıç günü ve saat kullanıcıdan.
+  Bezle takip edilenler (ör. pişik kremi) ana sayfada ayrı şeritte "son verilişten beri X bez". Eski sabit 3 bezlik krem sayacı kaldırıldı.
 - Telefonda sayı girişi uygulamanın kendi tuş takımıyla (sistem klavyesi açılmaz); tarih GG/AA/YYYY.
 - Yarım kalan form taslağı telefonda saklanır (12 saat); kayıt gönderimi kuyrukla arka planda (internetsiz de çalışır).
 - Android geri tuşu açık pencereyi kapatır, sekmeler arasında geri gider.

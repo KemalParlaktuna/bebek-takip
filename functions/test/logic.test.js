@@ -19,11 +19,15 @@ test('Gmail e-posta eşleme', () => {
 });
 
 test('İlaç tanımı doğrulama', () => {
-  assert.deepEqual(L.buildMed({ name: '  D  Vitamini ', times: ['21:00', '09:00', '09:00'] }), { name: 'D Vitamini', times: ['09:00', '21:00'], active: true });
+  assert.deepEqual(L.buildMed({ name: '  D  Vitamini ', times: ['21:00', '09:00', '09:00'], startDate: '2026-11-16' }),
+    { name: 'D Vitamini', mode: 'daily', times: ['09:00', '21:00'], every: 0, startDate: '2026-11-16', active: true });
+  assert.throws(() => L.buildMed({ name: 'X', times: ['09:00'] }), /Başlangıç/);
+  assert.throws(() => L.buildMed({ name: 'X', mode: 'days', every: 0, times: ['09:00'], startDate: '2026-11-16' }), /arasında/);
+  assert.equal(L.buildMed({ name: 'K', mode: 'diapers', every: 3, startDate: '2026-11-16', times: ['09:00'] }).times.length, 0);
   assert.deepEqual(L.buildMed({ name: 'Parol', times: [] }).times, [], 'gerektiğinde');
   assert.throws(() => L.buildMed({ name: '', times: [] }), /adı/);
   assert.throws(() => L.buildMed({ name: 'X', times: ['25:00'] }), /saat/);
-  assert.throws(() => L.buildMed({ name: 'X', times: ['01:00', '02:00', '03:00', '04:00', '05:00'] }), /en fazla/);
+  assert.throws(() => L.buildMed({ name: 'X', times: Array.from({ length: 13 }, (_, i) => String(i + 10) + ':00'), startDate: '2026-11-16' }), /en fazla/);
 });
 
 test('Günlük ilaç dozları', () => {
@@ -44,6 +48,22 @@ test('Günlük ilaç dozları', () => {
   // Durum kartı son 36 saatin ilaç kayıtlarını taşır
   const st = L.computeStatus([{ type: 'Diğer', med: 'D', eventAt: at('2026-11-16 08:40') }, { type: 'Diğer', med: 'D', eventAt: at('2026-11-14 08:40') }], at('2026-11-16 12:00'));
   assert.deepEqual(st.medEvents, [{ med: 'D', at: at('2026-11-16 08:40') }]);
+});
+
+test('Esnek ilaç planı: N günde 1, N bezde 1, başlangıç günü', () => {
+  const ev = (med, s) => ({ med, at: at(s) });
+  const now = at('2026-11-18 12:00');
+  const d2 = { name: 'G', mode: 'days', every: 2, times: ['10:00'], startDate: '2026-11-16' };
+  assert.equal(L.medDoses([d2], [], now).length, 1, '16 + 2 gün = bugün');
+  assert.equal(L.medDoses([{ ...d2, startDate: '2026-11-17' }], [], now).length, 0, 'bugün ara gün');
+  assert.equal(L.medDoses([{ name: 'S', mode: 'daily', times: ['10:00'], startDate: '2026-11-19' }], [], now).length, 0, 'henüz başlamadı');
+  const k = { name: 'K', mode: 'diapers', every: 3, startDate: '2026-11-01' };
+  const bez = [at('2026-11-18 08:00'), at('2026-11-18 10:00'), at('2026-11-18 11:00')];
+  let d = L.medDoses([k], [ev('K', '2026-11-18 09:00')], now, bez);
+  assert.deepEqual([d[0].diapers, d[0].state], [2, 'due']);
+  d = L.medDoses([k], [ev('K', '2026-11-18 07:00')], now, bez);
+  assert.deepEqual([d[0].diapers, d[0].state], [3, 'late']);
+  assert.equal(L.computeStatus([{ type: 'Bez', eventAt: at('2026-11-18 08:00') }], now).diaperTimes.length, 1);
 });
 
 const feed = (id, time, items, extra = {}) => L.buildRecord({ id, kayitTuru: 'Beslenme', dolduran: 'Kemal', olayZamani: time, feedItems: items, ...extra }, null, 'k@x', now);

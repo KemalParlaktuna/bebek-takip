@@ -51,32 +51,68 @@ export function agoText(pastMs, nowMs) {
 const DAY_MS = 24 * 3600 * 1000;
 const MED_DUE_BEFORE_MIN = 30;   // saatinden bu kadar önce "zamanı" sayılır
 const MED_LATE_AFTER_MIN = 30;   // saatinden bu kadar sonra hâlâ verilmediyse "gecikti"
-export const MED_MAX_TIMES = 4;
+export const MED_MAX_TIMES = 12;
+export const MED_MAX_EVERY = 30;
+// need: gerektiğinde | daily: günde N kez (times) | days: N günde 1 (times[0]) | diapers: N bezde 1
+export const MED_MODES = ['need', 'daily', 'days', 'diapers'];
 
-/** İlaç tanımını doğrular. times boşsa "gerektiğinde" (hatırlatma yok). */
-export function buildMed(data) {
-  const name = String((data && data.name) || '').trim().replace(/\s+/g, ' ');
-  if (!name) throw new Error('İlaç adı yazılmalı.');
-  if (name.length > 80) throw new Error('İlaç adı en fazla 80 karakter olabilir.');
-  const times = [...new Set((data.times || []).map((t) => String(t).trim()))].sort();
-  times.forEach((t) => { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw new Error('Geçersiz saat: ' + t); });
-  if (times.length > MED_MAX_TIMES) throw new Error('Günde en fazla ' + MED_MAX_TIMES + ' doz girilebilir.');
-  return { name, times, active: data.active !== false };
+/** Eski kayıtlarda mode yoktur: saat varsa "günde N", yoksa "gerektiğinde". */
+export function medMode(m) {
+  return MED_MODES.includes(m && m.mode) ? m.mode : (m && m.times && m.times.length ? 'daily' : 'need');
 }
 
+/** İlaç tanımını doğrular. */
+export function buildMed(data) {
+  data = data || {};
+  const name = String(data.name || '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('İlaç adı yazılmalı.');
+  if (name.length > 80) throw new Error('İlaç adı en fazla 80 karakter olabilir.');
+  const mode = medMode(data);
+  let times = mode === 'daily' || mode === 'days' ? [...new Set((data.times || []).map((t) => String(t).trim()))].sort() : [];
+  times.forEach((t) => { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw new Error('Geçersiz saat: ' + t); });
+  if (mode === 'daily' && !times.length) throw new Error('En az bir saat girilmeli.');
+  if (times.length > MED_MAX_TIMES) throw new Error('Günde en fazla ' + MED_MAX_TIMES + ' doz girilebilir.');
+  if (mode === 'days' && times.length !== 1) throw new Error('Verme saati girilmeli.');
+  let every = 0;
+  if (mode === 'days' || mode === 'diapers') {
+    every = Number(data.every);
+    if (!Number.isInteger(every) || every < 1 || every > MED_MAX_EVERY) throw new Error('Sayı 1 ile ' + MED_MAX_EVERY + ' arasında olmalı.');
+  }
+  const startDate = String(data.startDate || '');
+  if (mode !== 'need' && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error('Başlangıç günü seçilmeli.');
+  return { name, mode, times, every, startDate: mode === 'need' ? '' : startDate, active: data.active !== false };
+}
+
+function daysBetween(a, b) { return Math.round((parseLocal(b + ' 12:00') - parseLocal(a + ' 12:00')) / DAY_MS); }
+
 /**
- * Bugünkü ilaç dozları (İstanbul günü). meds: [{name, times, active}], events: [{med, at}] (son ~36 saat).
- * Her dozun penceresi komşu dozlarla arasının yarısına kadardır (günde 1 dozda ±12 saat);
+ * Bugünkü ilaç dozları (İstanbul günü). meds: buildMed biçiminde, events: [{med, at}] (son ~36 saat),
+ * diaperTimes: son ~36 saatin bez kayıt zamanları.
+ * Saatli dozlarda her dozun penceresi komşu dozlarla arasının yarısına kadardır (tek dozda ±12 saat);
  * pencerede o ilacın kaydı varsa doz "verildi" sayılır.
  * state: 'given' | 'upcoming' | 'due' (saatine 30 dk kala – 30 dk sonrası) | 'late'
+ * "N bezde 1" dozlarında time boştur; diapers = son verilişten (veya başlangıçtan) beri bez sayısı.
  */
-export function medDoses(meds, events, nowMs) {
+export function medDoses(meds, events, nowMs, diaperTimes) {
   const day = fmt(nowMs, 'yyyy-MM-dd');
   const out = [];
   (meds || []).forEach((m) => {
     if (!m || m.active === false || !m.name) return;
-    const slots = (m.times || []).map((t) => parseLocal(day + ' ' + t)).filter((x) => !isNaN(x)).sort((a, b) => a - b);
+    const mode = medMode(m);
+    if (mode === 'need' || (m.startDate && m.startDate > day)) return;
     const given = (events || []).filter((e) => e.med === m.name).map((e) => Number(e.at));
+    if (mode === 'diapers') {
+      // shortcut: yalnız son 36 saat görülür; son veriliş daha eskiyse sayım 36 saatten başlar
+      const since = Math.max(given.length ? Math.max(...given) : 0, m.startDate ? parseLocal(m.startDate + ' 00:00') : 0);
+      const diapers = (diaperTimes || []).filter((t) => t > since).length;
+      const every = Number(m.every) || 1;
+      const state = diapers >= every ? 'late' : diapers >= every - 1 ? 'due' : 'upcoming';
+      const last = given.length ? Math.max(...given) : 0;
+      out.push({ name: m.name, time: '', ts: nowMs, state, givenAt: last, givenTime: last ? fmt(last, 'HH:mm') : '', diapers, every });
+      return;
+    }
+    if (mode === 'days' && m.startDate && daysBetween(m.startDate, day) % (Number(m.every) || 1) !== 0) return;
+    const slots = (m.times || []).map((t) => parseLocal(day + ' ' + t)).filter((x) => !isNaN(x)).sort((a, b) => a - b);
     slots.forEach((ts, i) => {
       const prev = i > 0 ? slots[i - 1] : slots[slots.length - 1] - DAY_MS;
       const next = i < slots.length - 1 ? slots[i + 1] : slots[0] + DAY_MS;
@@ -305,12 +341,13 @@ export function computeStatus(recs, nowMs = Date.now()) {
     tailSide: '', tailMinutes: 0, nextRemaining: 0, minBreastMin: MIN_BREAST_MIN,
     nextFeedTs: 0, nextFeedTime: '', lastFeedTs: 0,
     lastDiaperTime: '', diaperAgo: '', lastDiaperTs: 0, lastDiaperBy: '',
-    hasAnyDiaper: false, hasAnyCreamRecord: false, diapersSinceCream: 0, medEvents: []
+    hasAnyDiaper: false, hasAnyCreamRecord: false, diapersSinceCream: 0, medEvents: [], diaperTimes: []
   };
   const rows = recs.filter((r) => r && r.eventAt).slice().sort((a, b) => b.eventAt - a.eventAt);
   // İlaç planı için son 36 saatte verilen ilaçlar (dozlar istemcide medDoses ile hesaplanır)
   res.medEvents = rows.filter((r) => r.type === 'Diğer' && r.med && r.eventAt > nowMs - 1.5 * DAY_MS)
     .map((r) => ({ med: String(r.med), at: r.eventAt }));
+  res.diaperTimes = rows.filter((r) => r.type === 'Bez' && r.eventAt > nowMs - 1.5 * DAY_MS).map((r) => r.eventAt);
   let feedDone = false, breastDone = false, diaperDone = false, creamDone = false;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];

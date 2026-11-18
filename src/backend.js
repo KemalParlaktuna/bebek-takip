@@ -321,6 +321,7 @@ export async function deleteMed(id) {
 }
 
 export const medDoses = L.medDoses;
+export const medMode = L.medMode;
 
 /* ---------------- bildirim anahtarı (FCM) ---------------- */
 
